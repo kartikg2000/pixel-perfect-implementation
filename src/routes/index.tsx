@@ -56,6 +56,8 @@ import {
 } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
 import logoImg from "@/assets/mhp-logo.png";
+import whatsappGifAsset from "@/assets/whatsapp-icon.gif.asset.json";
+import { useIsMobile } from "@/hooks/use-mobile";
 import freshCutFruitBoxImg from "@/assets/products/fresh-cut-fruit-box.jpg";
 import greenEnergyJuiceImg from "@/assets/products/green-energy-juice.jpg";
 import skinGlowJuiceImg from "@/assets/products/skin-glow-juice.jpg";
@@ -135,6 +137,7 @@ function getCartComboPlan(cart: Cart, productId: string): ComboPlanKey | undefin
 }
 
 function HomePage() {
+  const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -211,7 +214,7 @@ function HomePage() {
         comboPlan: nextPlan,
       },
     }));
-    setCartOpen(true);
+    if (!isMobile) setCartOpen(true);
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
