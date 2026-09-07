@@ -825,19 +825,12 @@ function FoodImage({ src, alt }: { src: string; alt: string }) {
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
-    <svg
+    <img
+      src={whatsappGifAsset.url}
+      alt=""
       aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20.5 11.5a8.5 8.5 0 0 1-12.7 7.4L4 20l1.2-3.6A8.5 8.5 0 1 1 20.5 11.5Z" />
-      <path d="M9.1 8.3c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.6c.1.2.1.4-.1.6l-.6.7c.5 1 1.3 1.7 2.3 2.2l.7-.6c.2-.2.4-.2.6-.1l1.6.7c.3.1.4.3.4.5 0 .7-.3 1.3-.8 1.6-.4.3-1 .3-1.5.1-2.8-.9-5-3.1-5.9-5.9-.2-.5-.2-1.1.1-1.4l.8-.8Z" />
-    </svg>
+      className={cn("rounded-full object-cover", className)}
+    />
   );
 }
 
