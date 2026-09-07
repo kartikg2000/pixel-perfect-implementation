@@ -1296,15 +1296,30 @@ function CheckoutProducts({
           return (
             <div
               key={product.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                if (quantity === 0) updateQuantity(product.id, 1);
+              }}
+              onKeyDown={(event) => {
+                if (quantity === 0 && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  updateQuantity(product.id, 1);
+                }
+              }}
               className={cn(
                 "flex items-start gap-3 border p-3 transition-colors",
+                quantity === 0 && "cursor-pointer",
                 selectedProductIds.includes(product.id)
                   ? "border-brand-green bg-brand-sage/55"
                   : "border-brand-deep/15 hover:border-brand-green/50",
               )}
             >
               <button
-                onClick={() => updateQuantity(product.id, quantity > 0 ? 0 : 1)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  updateQuantity(product.id, quantity > 0 ? 0 : 1);
+                }}
                 className="size-16 shrink-0 overflow-hidden border border-brand-deep/10"
                 aria-label={`${quantity > 0 ? "Remove" : "Add"} ${product.name}`}
               >
