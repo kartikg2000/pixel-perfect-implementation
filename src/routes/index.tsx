@@ -82,7 +82,7 @@ export const Route = createFileRoute("/")({
 });
 
 type CheckoutStep = 1 | 2 | 3 | 4;
-type CartItem = { quantity: number; comboPlan?: ComboPlanKey };
+type CartItem = { quantity: number; comboPlan?: ComboPlanKey | undefined };
 type Cart = Record<string, CartItem>;
 
 const whatsappMessage = (message: string) =>
@@ -722,7 +722,7 @@ function HomePage() {
 }
 
 function CategoryIcon({ category }: { category: Product["category"] }) {
-  const icons: Record<Product["category"], JSX.Element> = {
+  const icons: Record<Product["category"], ReactNode> = {
     "cut-fruits": (
       <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
         <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Z" />
@@ -866,7 +866,7 @@ function ProductCard({
   product: Product;
   onAdd: (comboPlan?: ComboPlanKey) => void;
   quantity: number;
-  comboPlan?: ComboPlanKey;
+  comboPlan?: ComboPlanKey | undefined;
 }) {
   const [localPlan, setLocalPlan] = useState<ComboPlanKey>(comboPlan ?? "daily");
   const isCombo = !!product.comboPlans;
