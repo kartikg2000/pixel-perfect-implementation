@@ -83,6 +83,7 @@ export const Route = createFileRoute("/")({
 });
 
 type CheckoutStep = 1 | 2 | 3 | 4 | 5;
+type Cart = Record<string, number>;
 
 const whatsappMessage = (message: string) =>
   `https://wa.me/${storefrontConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
@@ -96,10 +97,11 @@ const operationalBenefits: Array<[LucideIcon, string, string]> = [
 
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>(1);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("six-day");
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([products[0].id]);
+  const [cart, setCart] = useState<Cart>({});
   const [deliveryDate, setDeliveryDate] = useState<Date>();
   const [customer, setCustomer] = useState({
     name: "",
@@ -110,9 +112,12 @@ function HomePage() {
     window: "",
   });
 
-  const selectedProducts = useMemo(
-    () => products.filter((product) => selectedProductIds.includes(product.id)),
-    [selectedProductIds],
+  const selectedProductIds = useMemo(() => Object.keys(cart).filter((id) => (cart[id] ?? 0) > 0), [cart]);
+  const selectedProducts = useMemo(() => products.filter((product) => selectedProductIds.includes(product.id)), [selectedProductIds]);
+  const cartCount = useMemo(() => Object.values(cart).reduce((total, quantity) => total + quantity, 0), [cart]);
+  const cartSubtotal = useMemo(
+    () => selectedProducts.reduce((total, product) => total + (product.price ?? 0) * (cart[product.id] ?? 0), 0),
+    [cart, selectedProducts],
   );
   const currentPlan = getPlan(selectedPlan);
   const planSavings = getSavings(currentPlan);
@@ -127,23 +132,35 @@ function HomePage() {
 
   const openCheckout = (planId: PlanId = selectedPlan, productId?: string) => {
     setSelectedPlan(planId);
-    if (productId) setSelectedProductIds((ids) => (ids.includes(productId) ? ids : [...ids, productId]));
+    if (productId) {
+      setCart((current) => ({ ...current, [productId]: (current[productId] ?? 0) + 1 }));
+    }
     setCheckoutStep(1);
+    setCartOpen(false);
     setCheckoutOpen(true);
   };
 
   const toggleProduct = (productId: string) => {
-    setSelectedProductIds((ids) => {
-      if (ids.includes(productId)) {
-        if (ids.length === 1) return ids;
-        return ids.filter((id) => id !== productId);
-      }
-      return [...ids, productId];
+    setCart((current) => {
+      if (!current[productId]) return { ...current, [productId]: 1 };
+      const next = { ...current };
+      delete next[productId];
+      return next;
     });
   };
 
   const addProduct = (productId: string) => {
-    setSelectedProductIds((ids) => (ids.includes(productId) ? ids : [...ids, productId]));
+    setCart((current) => ({ ...current, [productId]: (current[productId] ?? 0) + 1 }));
+    setCartOpen(true);
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    setCart((current) => {
+      const next = { ...current };
+      if (quantity <= 0) delete next[productId];
+      else next[productId] = quantity;
+      return next;
+    });
   };
 
   const updateCustomer = (key: keyof typeof customer, value: string) => {
@@ -151,7 +168,7 @@ function HomePage() {
   };
 
   const nextStep = () => {
-    if (checkoutStep === 1 && selectedProducts.length === 0) {
+    if (checkoutStep === 1 && cartCount === 0) {
       toast.error("Choose at least one breakfast to continue.");
       return;
     }
@@ -184,7 +201,10 @@ function HomePage() {
             <a href="#faq" className="transition-colors hover:text-brand-green">FAQ</a>
           </nav>
 
-          <div className="hidden items-center gap-3 sm:flex">
+           <div className="hidden items-center gap-3 sm:flex">
+             <Button variant="outline" className="h-10 gap-2 border-brand-deep/20 bg-transparent px-3 text-brand-deep hover:bg-brand-sage" onClick={() => setCartOpen(true)} aria-label={`Open cart with ${cartCount} items`}>
+               <ShoppingBag className="size-4" /> <span>Cart</span><span className="min-w-5 rounded-full bg-brand-green px-1.5 py-0.5 text-center text-[10px] text-primary-foreground">{cartCount}</span>
+             </Button>
             <a
               className="inline-flex h-10 items-center gap-2 px-2 text-sm font-semibold text-brand-deep transition-colors hover:text-brand-green"
               href={whatsappMessage("Hi My Healthy Platter, I need help with my order.")}
@@ -273,7 +293,7 @@ function HomePage() {
               <ProductCard key={product.id} product={product} onAdd={() => {
                 addProduct(product.id);
                 toast.success(`${product.name} added to your order`);
-              }} onPlan={() => openCheckout("six-day", product.id)} selected={selectedProductIds.includes(product.id)} />
+              }} onPlan={() => openCheckout("six-day", product.id)} quantity={cart[product.id] ?? 0} />
             ))}
           </div>
         </section>
@@ -352,10 +372,11 @@ function HomePage() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-brand-deep/15 bg-brand-cream/95 p-3 shadow-soft backdrop-blur-md sm:hidden">
         <a href={whatsappMessage("Hi My Healthy Platter, I need help with my order.")} target="_blank" rel="noreferrer" className="inline-flex h-11 w-12 shrink-0 items-center justify-center border border-brand-deep/20 text-brand-deep" aria-label="WhatsApp support"><WhatsAppIcon className="size-5" /></a>
-        <Button className="h-11 flex-1 bg-brand-deep text-primary-foreground hover:bg-brand-green" onClick={() => openCheckout()}>{selectedProductIds.length > 0 ? "View my order" : "Order my breakfast"} <ArrowRight /></Button>
+         <Button className="h-11 flex-1 bg-brand-deep text-primary-foreground hover:bg-brand-green" onClick={() => setCartOpen(true)}>{cartCount > 0 ? `View my order · ${formatPrice(cartSubtotal)}` : "Order my breakfast"} <ShoppingBag /></Button>
       </div>
 
-      <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} step={checkoutStep} plan={currentPlan} selectedProducts={selectedProducts} selectedProductIds={selectedProductIds} toggleProduct={toggleProduct} onPlanChange={setSelectedPlan} deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} dateLabel={dateLabel} customer={customer} updateCustomer={updateCustomer} nextStep={nextStep} previousStep={previousStep} savings={planSavings} />
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} cartCount={cartCount} cartSubtotal={cartSubtotal} updateQuantity={updateQuantity} onCheckout={() => { setCartOpen(false); setCheckoutStep(1); setCheckoutOpen(true); }} />
+      <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} step={checkoutStep} plan={currentPlan} cart={cart} selectedProducts={selectedProducts} selectedProductIds={selectedProductIds} toggleProduct={toggleProduct} updateQuantity={updateQuantity} cartSubtotal={cartSubtotal} onPlanChange={setSelectedPlan} deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} dateLabel={dateLabel} customer={customer} updateCustomer={updateCustomer} nextStep={nextStep} previousStep={previousStep} savings={planSavings} />
     </div>
   );
 }
