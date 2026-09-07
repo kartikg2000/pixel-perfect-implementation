@@ -793,10 +793,10 @@ function FoodStillLife() {
       <div className="relative flex h-full items-center justify-center">
         <div className="absolute bottom-0 left-1/2 h-[14%] w-[85%] -translate-x-1/2 rounded-[50%] bg-brand-deep/10 blur-xl" />
         <div className="relative mt-8 grid w-[92%] grid-cols-2 gap-3 sm:gap-5">
-          <FoodImage type="fruit" alt="Fresh cut fruit bowl" />
-          <FoodImage type="salad" alt="Wholesome salad box" />
-          <FoodImage type="juice" alt="Fresh detox juices" />
-          <FoodImage type="veggies" alt="Sautéed seasonal vegetables" />
+          <FoodImage src={freshCutFruitBoxImg} alt="Fresh cut fruit box" />
+          <FoodImage src={chickpeaSaladImg} alt="Chickpea salad box" />
+          <FoodImage src={greenEnergyJuiceImg} alt="Green energy detox juice" />
+          <FoodImage src={sauteVeggiesImg} alt="Sautéed seasonal vegetables" />
         </div>
       </div>
       <p className="absolute bottom-5 left-5 text-xs font-bold uppercase tracking-[0.16em] text-brand-deep/60 sm:bottom-8 sm:left-8">
@@ -896,7 +896,7 @@ function ProductCard({
         quantity > 0 ? "border-brand-green" : "border-brand-deep/15",
       )}
     >
-      <FoodImage type={product.visual} alt={`${product.name} breakfast`} />
+      <FoodImage src={getProductImage(product)} alt={`${product.name} breakfast`} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-2xl text-brand-deep">{product.name}</h3>
