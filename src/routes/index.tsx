@@ -56,10 +56,39 @@ import {
 } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/mhp-logo.png.asset.json";
-import fruitAsset from "@/assets/cut-fruit-bowl.jpg.asset.json";
-import saladAsset from "@/assets/salad-box.jpg.asset.json";
-import juiceAsset from "@/assets/detox-juices.jpg.asset.json";
-import veggiesAsset from "@/assets/saute-veggies.jpg.asset.json";
+import freshCutFruitBoxImg from "@/assets/products/fresh-cut-fruit-box.jpg";
+import greenEnergyJuiceImg from "@/assets/products/green-energy-juice.jpg";
+import skinGlowJuiceImg from "@/assets/products/skin-glow-juice.jpg";
+import immunityBoostJuiceImg from "@/assets/products/immunity-boost-juice.jpg";
+import chickpeaSaladImg from "@/assets/products/chickpea-salad.jpg";
+import rajmaSaladImg from "@/assets/products/rajma-salad.jpg";
+import moongDalSproutsImg from "@/assets/products/moong-dal-sprouts.jpg";
+import soyaChunksSaladImg from "@/assets/products/soya-chunks-salad.jpg";
+import carrotCucumberSaladImg from "@/assets/products/carrot-cucumber-salad.jpg";
+import sauteVeggiesImg from "@/assets/products/saute-veggies.jpg";
+import comboFruitJuiceImg from "@/assets/products/combo-fruit-juice.jpg";
+import comboFruitSaladImg from "@/assets/products/combo-fruit-salad.jpg";
+import comboFruitSaladJuiceImg from "@/assets/products/combo-fruit-salad-juice.jpg";
+
+const productImages: Record<string, string> = {
+  "fresh-cut-fruit-box": freshCutFruitBoxImg,
+  "green-energy-juice": greenEnergyJuiceImg,
+  "skin-glow-juice": skinGlowJuiceImg,
+  "immunity-boost-juice": immunityBoostJuiceImg,
+  "chickpea-salad": chickpeaSaladImg,
+  "rajma-salad": rajmaSaladImg,
+  "moong-dal-sprouts": moongDalSproutsImg,
+  "soya-chunks-salad": soyaChunksSaladImg,
+  "carrot-cucumber-salad": carrotCucumberSaladImg,
+  "saute-veggies": sauteVeggiesImg,
+  "combo-fruit-juice": comboFruitJuiceImg,
+  "combo-fruit-salad": comboFruitSaladImg,
+  "combo-fruit-salad-juice": comboFruitSaladJuiceImg,
+};
+
+function getProductImage(product: Product) {
+  return productImages[product.id] ?? freshCutFruitBoxImg;
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -764,10 +793,10 @@ function FoodStillLife() {
       <div className="relative flex h-full items-center justify-center">
         <div className="absolute bottom-0 left-1/2 h-[14%] w-[85%] -translate-x-1/2 rounded-[50%] bg-brand-deep/10 blur-xl" />
         <div className="relative mt-8 grid w-[92%] grid-cols-2 gap-3 sm:gap-5">
-          <FoodImage type="fruit" alt="Fresh cut fruit bowl" />
-          <FoodImage type="salad" alt="Wholesome salad box" />
-          <FoodImage type="juice" alt="Fresh detox juices" />
-          <FoodImage type="veggies" alt="Sautéed seasonal vegetables" />
+          <FoodImage src={freshCutFruitBoxImg} alt="Fresh cut fruit box" />
+          <FoodImage src={chickpeaSaladImg} alt="Chickpea salad box" />
+          <FoodImage src={greenEnergyJuiceImg} alt="Green energy detox juice" />
+          <FoodImage src={sauteVeggiesImg} alt="Sautéed seasonal vegetables" />
         </div>
       </div>
       <p className="absolute bottom-5 left-5 text-xs font-bold uppercase tracking-[0.16em] text-brand-deep/60 sm:bottom-8 sm:left-8">
@@ -777,20 +806,8 @@ function FoodStillLife() {
   );
 }
 
-function FoodImage({
-  type,
-  alt,
-}: {
-  type: "fruit" | "salad" | "juice" | "veggies" | "combo";
-  alt: string;
-}) {
-  const image = {
-    fruit: fruitAsset.url,
-    salad: saladAsset.url,
-    juice: juiceAsset.url,
-    veggies: veggiesAsset.url,
-    combo: fruitAsset.url,
-  }[type];
+function FoodImage({ src, alt }: { src: string; alt: string }) {
+  const image = src;
   return (
     <div className="relative aspect-square overflow-hidden border border-brand-deep/10 bg-brand-cream shadow-soft">
       <img
@@ -879,7 +896,7 @@ function ProductCard({
         quantity > 0 ? "border-brand-green" : "border-brand-deep/15",
       )}
     >
-      <FoodImage type={product.visual} alt={`${product.name} breakfast`} />
+      <FoodImage src={getProductImage(product)} alt={`${product.name} breakfast`} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-2xl text-brand-deep">{product.name}</h3>
@@ -1053,15 +1070,7 @@ function CartLine({
     <div className="flex gap-3 border-b border-brand-deep/10 pb-4">
       <div className="size-16 shrink-0 overflow-hidden border border-brand-deep/10">
         <img
-          src={
-            {
-              fruit: fruitAsset.url,
-              salad: saladAsset.url,
-              juice: juiceAsset.url,
-              veggies: veggiesAsset.url,
-              combo: fruitAsset.url,
-            }[product.visual]
-          }
+          src={getProductImage(product)}
           alt={product.name}
           className="size-full object-cover"
         />
@@ -1300,15 +1309,7 @@ function CheckoutProducts({
                 aria-label={`${quantity > 0 ? "Remove" : "Add"} ${product.name}`}
               >
                 <img
-                  src={
-                    {
-                      fruit: fruitAsset.url,
-                      salad: saladAsset.url,
-                      juice: juiceAsset.url,
-                      veggies: veggiesAsset.url,
-                      combo: fruitAsset.url,
-                    }[product.visual]
-                  }
+                  src={getProductImage(product)}
                   alt={product.name}
                   className="size-full object-cover"
                 />
