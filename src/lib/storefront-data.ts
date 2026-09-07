@@ -32,7 +32,8 @@ export const storefrontConfig = {
     label: "10% OFF YOUR FIRST ORDER",
     discountRate: 0.1,
   },
-  deliveryFee: null as number | null,
+  deliveryFee: 0 as number | null,
+  deliveryLabel: "Free delivery launch offer",
 };
 
 export const products: [Product, Product, Product, Product] = [
@@ -44,7 +45,7 @@ export const products: [Product, Product, Product, Product] = [
     ingredients: "Seasonal fruit selection",
     portion: "Single serving",
     visual: "fruit",
-    price: null,
+    price: 149,
   },
   {
     id: "sprout-bowl",
@@ -54,7 +55,7 @@ export const products: [Product, Product, Product, Product] = [
     ingredients: "Fresh sprouts · vegetables",
     portion: "Single serving",
     visual: "sprouts",
-    price: null,
+    price: 169,
   },
   {
     id: "detox-juice",
@@ -64,7 +65,7 @@ export const products: [Product, Product, Product, Product] = [
     ingredients: "Fresh greens · seasonal produce",
     portion: "250 ml",
     visual: "juice",
-    price: null,
+    price: 129,
   },
   {
     id: "saute-veggies",
@@ -74,7 +75,7 @@ export const products: [Product, Product, Product, Product] = [
     ingredients: "Seasonal vegetables",
     portion: "Single serving",
     visual: "veggies",
-    price: null,
+    price: 179,
   },
 ];
 
@@ -86,7 +87,7 @@ export const plans: [Plan, Plan, Plan] = [
     description: "One breakfast, no commitment.",
     bestFor: "First time here?",
     deliveries: 1,
-    price: null,
+    price: 149,
     cta: "Try it once",
   },
   {
@@ -96,7 +97,7 @@ export const plans: [Plan, Plan, Plan] = [
     description: "Fresh breakfast for 6 delivery days.",
     bestFor: "An easy way to make healthy breakfast part of your week.",
     deliveries: 6,
-    price: null,
+    price: 799,
     badge: "Most popular",
     cta: "Start my 6-day plan",
   },
@@ -107,7 +108,7 @@ export const plans: [Plan, Plan, Plan] = [
     description: "Fresh breakfast for 26 delivery days.",
     bestFor: "For customers who want breakfast taken care of all month.",
     deliveries: 26,
-    price: null,
+    price: 3199,
     badge: "Best value",
     cta: "Start my 26-day plan",
   },
@@ -142,4 +143,9 @@ export function getSavings(plan: Plan) {
     amount: Math.max(equivalentOneTime - plan.price, 0),
     percentage: equivalentOneTime > 0 ? Math.round(((equivalentOneTime - plan.price) / equivalentOneTime) * 100) : 0,
   };
+}
+
+export function getOfferDiscount(plan: Plan) {
+  if (!storefrontConfig.offer.enabled || plan.price === null) return 0;
+  return Math.round(plan.price * storefrontConfig.offer.discountRate);
 }
