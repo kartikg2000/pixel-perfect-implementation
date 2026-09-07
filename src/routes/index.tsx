@@ -625,7 +625,7 @@ function HomePage() {
                 ],
                 [
                   "Need help with an order?",
-                  "WhatsApp us at 9780035199 and we&apos;ll help you with the next step.",
+                  "WhatsApp us at 9780035199 . We'll help you with the next step.",
                 ],
               ].map(([question, answer]) => (
                 <details className="group py-5" key={question}>
