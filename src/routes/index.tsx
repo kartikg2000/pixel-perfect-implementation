@@ -55,7 +55,7 @@ import {
   type Product,
 } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
-import logoAsset from "@/assets/mhp-logo.png.asset.json";
+import logoImg from "@/assets/mhp-logo.png";
 import freshCutFruitBoxImg from "@/assets/products/fresh-cut-fruit-box.jpg";
 import greenEnergyJuiceImg from "@/assets/products/green-energy-juice.jpg";
 import skinGlowJuiceImg from "@/assets/products/skin-glow-juice.jpg";
@@ -264,7 +264,7 @@ function HomePage() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-10">
           <a href="#top" className="flex items-center gap-3" aria-label="My Healthy Platter home">
             <img
-              src={logoAsset.url}
+              src={logoImg}
               alt="My Healthy Platter"
               className="h-12 w-auto max-w-[176px] object-contain object-left sm:h-14 sm:max-w-[210px]"
             />
