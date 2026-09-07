@@ -8,6 +8,8 @@ import {
   ChevronDown,
   CircleHelp,
   Clock3,
+  Instagram,
+  MapPin,
   Menu,
   MessageCircle,
   Minus,
@@ -41,21 +43,22 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   formatPrice,
-  getPlan,
-  getPlanPerDelivery,
-  getSavings,
+  getComboPlanDeliveries,
+  getComboPlanLabel,
   getOfferDiscount,
-  plans,
+  getProductById,
+  getProductPrice,
+  categories,
   products,
   storefrontConfig,
-  type PlanId,
+  type ComboPlanKey,
   type Product,
 } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/mhp-logo.png.asset.json";
 import fruitAsset from "@/assets/cut-fruit-bowl.jpg.asset.json";
-import sproutsAsset from "@/assets/sprout-bowl.jpg.asset.json";
-import juiceAsset from "@/assets/detox-juice.jpg.asset.json";
+import saladAsset from "@/assets/salad-box.jpg.asset.json";
+import juiceAsset from "@/assets/detox-juices.jpg.asset.json";
 import veggiesAsset from "@/assets/saute-veggies.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -78,8 +81,9 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-type CheckoutStep = 1 | 2 | 3 | 4 | 5;
-type Cart = Record<string, number>;
+type CheckoutStep = 1 | 2 | 3 | 4;
+type CartItem = { quantity: number; comboPlan?: ComboPlanKey };
+type Cart = Record<string, CartItem>;
 
 const whatsappMessage = (message: string) =>
   `https://wa.me/${storefrontConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
@@ -91,12 +95,21 @@ const operationalBenefits: Array<[LucideIcon, string, string]> = [
   [MessageCircle, "WhatsApp support", "Need help? Reach us at 9780035199."],
 ];
 
+const comboPlanOrder: ComboPlanKey[] = ["daily", "weekly", "monthly"];
+
+function getCartQuantity(cart: Cart, productId: string) {
+  return cart[productId]?.quantity ?? 0;
+}
+
+function getCartComboPlan(cart: Cart, productId: string): ComboPlanKey | undefined {
+  return cart[productId]?.comboPlan;
+}
+
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>(1);
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>("six-day");
   const [cart, setCart] = useState<Cart>({});
   const [deliveryDate, setDeliveryDate] = useState<Date>();
   const [customer, setCustomer] = useState({
@@ -109,7 +122,7 @@ function HomePage() {
   });
 
   const selectedProductIds = useMemo(
-    () => Object.keys(cart).filter((id) => (cart[id] ?? 0) > 0),
+    () => Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0),
     [cart],
   );
   const selectedProducts = useMemo(
@@ -117,19 +130,18 @@ function HomePage() {
     [selectedProductIds],
   );
   const cartCount = useMemo(
-    () => Object.values(cart).reduce((total, quantity) => total + quantity, 0),
+    () => Object.values(cart).reduce((total, item) => total + item.quantity, 0),
     [cart],
   );
   const cartSubtotal = useMemo(
     () =>
       selectedProducts.reduce(
-        (total, product) => total + (product.price ?? 0) * (cart[product.id] ?? 0),
+        (total, product) =>
+          total + getProductPrice(product, cart[product.id]?.comboPlan) * (cart[product.id]?.quantity ?? 0),
         0,
       ),
     [cart, selectedProducts],
   );
-  const currentPlan = getPlan(selectedPlan);
-  const planSavings = getSavings(currentPlan);
   const dateLabel = deliveryDate
     ? deliveryDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : "Choose a date";
@@ -139,27 +151,37 @@ function HomePage() {
     setMenuOpen(false);
   };
 
-  const openCheckout = (planId: PlanId = selectedPlan, productId?: string) => {
-    setSelectedPlan(planId);
+  const openCheckout = (productId?: string, comboPlan?: ComboPlanKey) => {
     if (productId) {
-      setCart((current) => ({ ...current, [productId]: (current[productId] ?? 0) + 1 }));
+      setCart((current) => {
+        const existing = current[productId];
+        const product = getProductById(productId);
+        const nextPlan =
+          comboPlan ?? (product?.comboPlans ? "daily" : existing?.comboPlan);
+        return {
+          ...current,
+          [productId]: {
+            quantity: (existing?.quantity ?? 0) + 1,
+            comboPlan: nextPlan,
+          },
+        };
+      });
     }
     setCheckoutStep(1);
     setCartOpen(false);
     setCheckoutOpen(true);
   };
 
-  const toggleProduct = (productId: string) => {
-    setCart((current) => {
-      if (!current[productId]) return { ...current, [productId]: 1 };
-      const next = { ...current };
-      delete next[productId];
-      return next;
-    });
-  };
-
-  const addProduct = (productId: string) => {
-    setCart((current) => ({ ...current, [productId]: (current[productId] ?? 0) + 1 }));
+  const addProduct = (productId: string, comboPlan?: ComboPlanKey) => {
+    const product = getProductById(productId);
+    const nextPlan = comboPlan ?? (product?.comboPlans ? "daily" : undefined);
+    setCart((current) => ({
+      ...current,
+      [productId]: {
+        quantity: (current[productId]?.quantity ?? 0) + 1,
+        comboPlan: nextPlan,
+      },
+    }));
     setCartOpen(true);
   };
 
@@ -167,8 +189,16 @@ function HomePage() {
     setCart((current) => {
       const next = { ...current };
       if (quantity <= 0) delete next[productId];
-      else next[productId] = quantity;
+      else next[productId] = { ...(next[productId] ?? { comboPlan: undefined }), quantity };
       return next;
+    });
+  };
+
+  const updateComboPlan = (productId: string, comboPlan: ComboPlanKey) => {
+    setCart((current) => {
+      const item = current[productId];
+      if (!item) return current;
+      return { ...current, [productId]: { ...item, comboPlan } };
     });
   };
 
@@ -181,18 +211,18 @@ function HomePage() {
       toast.error("Choose at least one breakfast to continue.");
       return;
     }
-    if (checkoutStep === 3 && !deliveryDate) {
+    if (checkoutStep === 2 && !deliveryDate) {
       toast.error("Choose your first delivery date to continue.");
       return;
     }
     if (
-      checkoutStep === 4 &&
+      checkoutStep === 3 &&
       (!customer.name || !customer.mobile || !customer.address || !customer.pin)
     ) {
       toast.error("Please add your name, mobile, address and PIN code.");
       return;
     }
-    setCheckoutStep((step) => (step < 5 ? ((step + 1) as CheckoutStep) : step));
+    setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
   };
 
   const previousStep = () => {
@@ -343,17 +373,17 @@ function HomePage() {
         <section className="border-y border-brand-deep/10 bg-brand-deep px-5 py-5 text-primary-foreground lg:px-10">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
             <div>
-              <p className="text-sm font-bold">Not ready for a plan?</p>
+              <p className="text-sm font-bold">Not ready for a routine?</p>
               <p className="mt-1 text-sm text-primary-foreground/70">
-                Try breakfast once. If you love the routine, make it a habit.
+                Try breakfast once. If you love the routine, make it a habit with a combo plan.
               </p>
             </div>
             <Button
               variant="outline"
               className="border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground hover:text-brand-deep"
-              onClick={() => openCheckout("one-time")}
+              onClick={() => scrollTo("combos")}
             >
-              Order once <ArrowRight />
+              See combos <ArrowRight />
             </Button>
           </div>
         </section>
@@ -364,19 +394,38 @@ function HomePage() {
             title="What's coming to your door?"
             description="Freshly prepared breakfast options made for busy mornings."
           />
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAdd={() => {
-                  addProduct(product.id);
-                  toast.success(`${product.name} added to your order`);
-                }}
-                onPlan={() => openCheckout("six-day", product.id)}
-                quantity={cart[product.id] ?? 0}
-              />
-            ))}
+          <div className="mt-12 space-y-16">
+            {categories.map((category) => {
+              const categoryProducts = products.filter((product) => product.category === category.id);
+              if (categoryProducts.length === 0) return null;
+              return (
+                <div key={category.id} id={category.id}>
+                  <div className="mb-6 flex items-center gap-3 border-b border-brand-deep/10 pb-4">
+                    <div className="flex size-10 items-center justify-center bg-brand-green text-primary-foreground">
+                      <CategoryIcon category={category.id} />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-2xl text-brand-deep">{category.title}</h3>
+                      <p className="text-sm text-brand-ink/60">{category.subtitle}</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {categoryProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onAdd={(comboPlan) => {
+                          addProduct(product.id, comboPlan);
+                          toast.success(`${product.name} added to your order`);
+                        }}
+                        quantity={getCartQuantity(cart, product.id)}
+                        comboPlan={getCartComboPlan(cart, product.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -385,17 +434,54 @@ function HomePage() {
             <SectionIntro
               eyebrow="YOUR ROUTINE"
               title="How do you want breakfast taken care of?"
-              description="Start once, make it a weekly routine, or let us handle your mornings all month."
+              description="Combos are available daily, weekly or monthly. Single items are perfect for a one-time order."
             />
             <div className="mt-12 grid items-stretch gap-4 lg:grid-cols-3">
-              {plans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  selected={selectedPlan === plan.id}
-                  onSelect={() => setSelectedPlan(plan.id)}
-                  onStart={() => openCheckout(plan.id)}
-                />
+              {[
+                {
+                  name: "Daily",
+                  deliveries: 1,
+                  description: "One day at a time. Great for trying us out.",
+                  badge: "Try first",
+                },
+                {
+                  name: "Weekly (6 Days)",
+                  deliveries: 6,
+                  description: "Fresh breakfast for 6 delivery days.",
+                  badge: "Most popular",
+                },
+                {
+                  name: "Monthly (24 Days)",
+                  deliveries: 24,
+                  description: "Fresh breakfast for 24 delivery days.",
+                  badge: "Best value",
+                },
+              ].map((option) => (
+                <article
+                  key={option.name}
+                  className="relative flex flex-col border border-brand-deep/15 bg-brand-cream p-6 lg:p-8"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-green">
+                        {option.badge}
+                      </p>
+                      <h3 className="mt-3 font-display text-3xl text-brand-deep">{option.name}</h3>
+                    </div>
+                  </div>
+                  <p className="mt-5 text-sm text-brand-ink/75">{option.description}</p>
+                  <div className="mt-7 border-t border-brand-deep/10 pt-5">
+                    <p className="text-sm text-brand-ink/60">
+                      {option.deliveries} {option.deliveries === 1 ? "delivery" : "deliveries"}
+                    </p>
+                  </div>
+                  <Button
+                    className="relative mt-7 w-full bg-brand-deep text-primary-foreground hover:bg-brand-green"
+                    onClick={() => scrollTo("menu")}
+                  >
+                    Choose from menu <ArrowRight />
+                  </Button>
+                </article>
               ))}
             </div>
             <div className="mt-7 flex items-center justify-center gap-2 text-center text-xs text-brand-deep/65">
@@ -442,8 +528,8 @@ function HomePage() {
             />
             <div className="mt-12 grid gap-10 md:grid-cols-3">
               {[
-                ["01", "Choose your breakfast", "Pick what you want delivered."],
-                ["02", "Choose your routine", "Try once, choose 6 days, or choose 26 days."],
+                ["01", "Choose your breakfast", "Pick what you want delivered from the menu."],
+                ["02", "Choose your routine", "Single items for one-time, or pick a combo plan."],
                 ["03", "We deliver", "Fresh breakfast arrives at your doorstep."],
               ].map(([number, title, text]) => (
                 <div className="border-t border-primary-foreground/20 pt-5" key={number}>
@@ -499,11 +585,11 @@ function HomePage() {
                 ],
                 [
                   "Can I try it just once?",
-                  "Yes. One-time is the lowest-friction way to try us. If you love the routine, choose a plan next time.",
+                  "Yes. Any single item is perfect for a one-time order. Combos also have a Daily option.",
                 ],
                 [
-                  "How do plans work?",
-                  "Choose 6 delivery days for a week or 26 delivery days for the month. Your plan and delivery details are shown clearly before you confirm.",
+                  "How do combo plans work?",
+                  "Choose Daily, Weekly (6 days) or Monthly (24 days) for any combo. The price is fixed for the plan you pick.",
                 ],
                 [
                   "Need help with an order?",
@@ -559,11 +645,24 @@ function HomePage() {
 
       <footer className="bg-brand-cream px-5 py-10 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 text-xs text-brand-ink/60 sm:flex-row">
-          <p className="font-bold tracking-[0.13em] text-brand-deep">MY HEALTHY PLATTER</p>
-          <p>Fresh breakfast without the morning work.</p>
-          <a href={`tel:${storefrontConfig.phone}`} className="font-semibold text-brand-deep">
-            {storefrontConfig.phone}
-          </a>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+            <p className="font-bold tracking-[0.13em] text-brand-deep">MY HEALTHY PLATTER</p>
+            <p>Fresh breakfast without the morning work.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <a
+              href={`tel:${storefrontConfig.phone}`}
+              className="inline-flex items-center gap-1.5 font-semibold text-brand-deep"
+            >
+              <MessageCircle className="size-3.5" /> {storefrontConfig.phone}
+            </a>
+            <span className="inline-flex items-center gap-1.5">
+              <Instagram className="size-3.5" /> {storefrontConfig.instagram}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="size-3.5" /> {storefrontConfig.deliveryArea}
+            </span>
+          </div>
         </div>
       </footer>
 
@@ -593,6 +692,7 @@ function HomePage() {
         cartCount={cartCount}
         cartSubtotal={cartSubtotal}
         updateQuantity={updateQuantity}
+        updateComboPlan={updateComboPlan}
         onCheckout={() => {
           setCartOpen(false);
           setCheckoutStep(1);
@@ -603,14 +703,12 @@ function HomePage() {
         open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
         step={checkoutStep}
-        plan={currentPlan}
         cart={cart}
         selectedProducts={selectedProducts}
         selectedProductIds={selectedProductIds}
-        toggleProduct={toggleProduct}
         updateQuantity={updateQuantity}
+        updateComboPlan={updateComboPlan}
         cartSubtotal={cartSubtotal}
-        onPlanChange={setSelectedPlan}
         deliveryDate={deliveryDate}
         setDeliveryDate={setDeliveryDate}
         dateLabel={dateLabel}
@@ -618,10 +716,43 @@ function HomePage() {
         updateCustomer={updateCustomer}
         nextStep={nextStep}
         previousStep={previousStep}
-        savings={planSavings}
       />
     </div>
   );
+}
+
+function CategoryIcon({ category }: { category: Product["category"] }) {
+  const icons: Record<Product["category"], JSX.Element> = {
+    "cut-fruits": (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Z" />
+        <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6Z" opacity="0.4" />
+      </svg>
+    ),
+    "detox-juices": (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+        <path d="M7 2h10v4H7zM9 6h6v2H9z" />
+        <path d="M8 8h8l1 14H7z" opacity="0.6" />
+      </svg>
+    ),
+    "salad-box": (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+        <path d="M12 2C7 2 3 6 3 11c0 3 1.5 5.5 4 7l1 4h8l1-4c2.5-1.5 4-4 4-7 0-5-4-9-9-9Z" />
+      </svg>
+    ),
+    "saute-veggies": (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+        <path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" opacity="0.6" />
+        <path d="M2 6h20v4H2z" />
+      </svg>
+    ),
+    combos: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+        <path d="M12 2l3 6h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z" />
+      </svg>
+    ),
+  };
+  return icons[category] ?? null;
 }
 
 function FoodStillLife() {
@@ -634,8 +765,8 @@ function FoodStillLife() {
         <div className="absolute bottom-0 left-1/2 h-[14%] w-[85%] -translate-x-1/2 rounded-[50%] bg-brand-deep/10 blur-xl" />
         <div className="relative mt-8 grid w-[92%] grid-cols-2 gap-3 sm:gap-5">
           <FoodImage type="fruit" alt="Fresh cut fruit bowl" />
-          <FoodImage type="sprouts" alt="Colourful sprout bowl" />
-          <FoodImage type="juice" alt="Fresh green detox juice" />
+          <FoodImage type="salad" alt="Wholesome salad box" />
+          <FoodImage type="juice" alt="Fresh detox juices" />
           <FoodImage type="veggies" alt="Sautéed seasonal vegetables" />
         </div>
       </div>
@@ -650,14 +781,15 @@ function FoodImage({
   type,
   alt,
 }: {
-  type: "fruit" | "sprouts" | "juice" | "veggies";
+  type: "fruit" | "salad" | "juice" | "veggies" | "combo";
   alt: string;
 }) {
   const image = {
     fruit: fruitAsset.url,
-    sprouts: sproutsAsset.url,
+    salad: saladAsset.url,
     juice: juiceAsset.url,
     veggies: veggiesAsset.url,
+    combo: fruitAsset.url,
   }[type];
   return (
     <div className="relative aspect-square overflow-hidden border border-brand-deep/10 bg-brand-cream shadow-soft">
@@ -728,14 +860,18 @@ function SectionIntro({
 function ProductCard({
   product,
   onAdd,
-  onPlan,
   quantity,
+  comboPlan,
 }: {
   product: Product;
-  onAdd: () => void;
-  onPlan: () => void;
+  onAdd: (comboPlan?: ComboPlanKey) => void;
   quantity: number;
+  comboPlan?: ComboPlanKey;
 }) {
+  const [localPlan, setLocalPlan] = useState<ComboPlanKey>(comboPlan ?? "daily");
+  const isCombo = !!product.comboPlans;
+  const displayPrice = getProductPrice(product, isCombo ? localPlan : undefined);
+
   return (
     <article
       className={cn(
@@ -753,7 +889,7 @@ function ProductCard({
             </span>
           )}
         </div>
-        <p className="mt-3 min-h-[72px] text-sm leading-6 text-brand-ink/65">
+        <p className="mt-3 min-h-[48px] text-sm leading-6 text-brand-ink/65">
           {product.description}
         </p>
         <div className="space-y-2 border-t border-brand-deep/10 pt-4 text-xs text-brand-ink/60">
@@ -764,94 +900,42 @@ function ProductCard({
             <span className="font-bold text-brand-deep">Portion</span> {product.portion}
           </p>
         </div>
-        <p className="mt-5 text-sm font-bold text-brand-deep">{formatPrice(product.price)}</p>
+
+        {isCombo && (
+          <div className="mt-4 inline-flex w-full border border-brand-deep/15 p-1">
+            {comboPlanOrder.map((key) => (
+              <button
+                key={key}
+                onClick={() => setLocalPlan(key)}
+                className={cn(
+                  "flex-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide",
+                  localPlan === key
+                    ? "bg-brand-deep text-primary-foreground"
+                    : "text-brand-deep hover:bg-brand-sage",
+                )}
+              >
+                {key === "daily" ? "Daily" : key === "weekly" ? "Weekly" : "Monthly"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-4 text-sm font-bold text-brand-deep">
+          {formatPrice(displayPrice)}
+          {isCombo && localPlan !== "daily" && (
+            <span className="ml-2 text-xs font-normal text-brand-ink/55">
+              {getComboPlanDeliveries(localPlan)} deliveries
+            </span>
+          )}
+        </p>
         <div className="mt-4 flex flex-col gap-2">
           <Button
             className="w-full bg-brand-deep text-primary-foreground hover:bg-brand-green"
-            onClick={onAdd}
+            onClick={() => onAdd(isCombo ? localPlan : undefined)}
           >
             {quantity > 0 ? `Add another · ${quantity}` : "Add to order"} <Plus />
           </Button>
-          <Button
-            variant="ghost"
-            className="w-full text-brand-deep hover:bg-brand-sage"
-            onClick={onPlan}
-          >
-            Make it a plan <ArrowRight />
-          </Button>
         </div>
-      </div>
-    </article>
-  );
-}
-
-function PlanCard({
-  plan,
-  selected,
-  onSelect,
-  onStart,
-}: {
-  plan: (typeof plans)[number];
-  selected: boolean;
-  onSelect: () => void;
-  onStart: () => void;
-}) {
-  const savings = getSavings(plan);
-  const perDelivery = getPlanPerDelivery(plan);
-  return (
-    <article
-      className={cn(
-        "relative flex flex-col border bg-brand-cream p-6 transition-all lg:p-8",
-        selected ? "border-2 border-brand-green shadow-soft" : "border-brand-deep/15",
-      )}
-    >
-      <button
-        className="absolute inset-0 z-0 cursor-pointer text-left"
-        aria-label={`Select ${plan.name}`}
-        onClick={onSelect}
-      />
-      <div className="relative z-10 flex h-full flex-col">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-green">
-              {plan.eyebrow}
-            </p>
-            <h3 className="mt-3 font-display text-3xl text-brand-deep">{plan.name}</h3>
-          </div>
-          {plan.badge && (
-            <span className="border border-brand-green/30 bg-brand-sage px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-brand-deep">
-              {plan.badge}
-            </span>
-          )}
-        </div>
-        <p className="mt-5 text-sm text-brand-ink/75">{plan.description}</p>
-        <p className="mt-6 text-xs font-bold uppercase tracking-[0.12em] text-brand-deep/50">
-          Best for
-        </p>
-        <p className="mt-2 min-h-[40px] text-sm leading-6 text-brand-ink/65">{plan.bestFor}</p>
-        <div className="mt-7 border-t border-brand-deep/10 pt-5">
-          <p className="font-display text-3xl text-brand-deep">{formatPrice(plan.price)}</p>
-          {perDelivery && (
-            <p className="mt-1 text-xs text-brand-ink/60">{formatPrice(perDelivery)} / breakfast</p>
-          )}
-          {savings && savings.percentage > 0 && (
-            <p className="mt-2 text-xs font-bold text-brand-green">Save {savings.percentage}%</p>
-          )}
-        </div>
-        <Button
-          className={cn(
-            "relative mt-7 w-full",
-            selected
-              ? "bg-brand-deep text-primary-foreground hover:bg-brand-green"
-              : "bg-brand-sage text-brand-deep hover:bg-brand-green hover:text-primary-foreground",
-          )}
-          onClick={(event) => {
-            event.stopPropagation();
-            onStart();
-          }}
-        >
-          {plan.cta} <ArrowRight />
-        </Button>
       </div>
     </article>
   );
@@ -864,6 +948,7 @@ function CartDrawer({
   cartCount,
   cartSubtotal,
   updateQuantity,
+  updateComboPlan,
   onCheckout,
 }: {
   open: boolean;
@@ -872,6 +957,7 @@ function CartDrawer({
   cartCount: number;
   cartSubtotal: number;
   updateQuantity: (id: string, quantity: number) => void;
+  updateComboPlan: (id: string, plan: ComboPlanKey) => void;
   onCheckout: () => void;
 }) {
   if (!open) return null;
@@ -917,13 +1003,14 @@ function CartDrawer({
           ) : (
             <div className="space-y-4">
               {products
-                .filter((product) => (cart[product.id] ?? 0) > 0)
+                .filter((product) => (cart[product.id]?.quantity ?? 0) > 0)
                 .map((product) => (
                   <CartLine
                     key={product.id}
                     product={product}
-                    quantity={cart[product.id] ?? 0}
+                    item={cart[product.id]!}
                     updateQuantity={updateQuantity}
+                    updateComboPlan={updateComboPlan}
                   />
                 ))}
             </div>
@@ -935,7 +1022,7 @@ function CartDrawer({
             <span>{formatPrice(cartSubtotal)}</span>
           </div>
           <p className="mt-2 text-xs text-brand-ink/55">
-            Routine, offer, and delivery details are confirmed next.
+            Offer and delivery details are confirmed next.
           </p>
           <Button
             className="mt-5 h-12 w-full bg-brand-deep text-primary-foreground hover:bg-brand-green"
@@ -952,13 +1039,16 @@ function CartDrawer({
 
 function CartLine({
   product,
-  quantity,
+  item,
   updateQuantity,
+  updateComboPlan,
 }: {
   product: Product;
-  quantity: number;
+  item: CartItem;
   updateQuantity: (id: string, quantity: number) => void;
+  updateComboPlan: (id: string, plan: ComboPlanKey) => void;
 }) {
+  const lineTotal = getProductPrice(product, item.comboPlan) * item.quantity;
   return (
     <div className="flex gap-3 border-b border-brand-deep/10 pb-4">
       <div className="size-16 shrink-0 overflow-hidden border border-brand-deep/10">
@@ -966,9 +1056,10 @@ function CartLine({
           src={
             {
               fruit: fruitAsset.url,
-              sprouts: sproutsAsset.url,
+              salad: saladAsset.url,
               juice: juiceAsset.url,
               veggies: veggiesAsset.url,
+              combo: fruitAsset.url,
             }[product.visual]
           }
           alt={product.name}
@@ -979,7 +1070,27 @@ function CartLine({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-semibold text-brand-deep">{product.name}</p>
-            <p className="mt-1 text-xs text-brand-ink/55">{formatPrice(product.price)} each</p>
+            {product.comboPlans && item.comboPlan && (
+              <div className="mt-1 inline-flex items-center gap-1">
+                {comboPlanOrder.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => updateComboPlan(product.id, key)}
+                    className={cn(
+                      "px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                      item.comboPlan === key
+                        ? "bg-brand-green text-primary-foreground"
+                        : "bg-brand-sage text-brand-deep hover:bg-brand-green/20",
+                    )}
+                  >
+                    {key === "daily" ? "D" : key === "weekly" ? "W" : "M"}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-xs text-brand-ink/55">
+              {formatPrice(getProductPrice(product, item.comboPlan))} each
+            </p>
           </div>
           <button
             className="text-xs font-semibold text-brand-ink/55 underline-offset-2 hover:text-brand-green hover:underline"
@@ -994,27 +1105,25 @@ function CartLine({
               variant="ghost"
               size="icon"
               className="size-8 rounded-none text-brand-deep"
-              onClick={() => updateQuantity(product.id, quantity - 1)}
+              onClick={() => updateQuantity(product.id, item.quantity - 1)}
               aria-label={`Decrease ${product.name}`}
             >
               <Minus className="size-3.5" />
             </Button>
             <span className="w-8 text-center text-sm font-semibold text-brand-deep">
-              {quantity}
+              {item.quantity}
             </span>
             <Button
               variant="ghost"
               size="icon"
               className="size-8 rounded-none text-brand-deep"
-              onClick={() => updateQuantity(product.id, quantity + 1)}
+              onClick={() => updateQuantity(product.id, item.quantity + 1)}
               aria-label={`Increase ${product.name}`}
             >
               <Plus className="size-3.5" />
             </Button>
           </div>
-          <span className="font-semibold text-brand-deep">
-            {formatPrice((product.price ?? 0) * quantity)}
-          </span>
+          <span className="font-semibold text-brand-deep">{formatPrice(lineTotal)}</span>
         </div>
       </div>
     </div>
@@ -1025,14 +1134,12 @@ function CheckoutDialog({
   open,
   onOpenChange,
   step,
-  plan,
   cart,
   selectedProducts,
   selectedProductIds,
-  toggleProduct,
   updateQuantity,
+  updateComboPlan,
   cartSubtotal,
-  onPlanChange,
   deliveryDate,
   setDeliveryDate,
   dateLabel,
@@ -1040,19 +1147,16 @@ function CheckoutDialog({
   updateCustomer,
   nextStep,
   previousStep,
-  savings,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   step: CheckoutStep;
-  plan: (typeof plans)[number];
   cart: Cart;
   selectedProducts: Product[];
   selectedProductIds: string[];
-  toggleProduct: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  updateComboPlan: (id: string, plan: ComboPlanKey) => void;
   cartSubtotal: number;
-  onPlanChange: (id: PlanId) => void;
   deliveryDate: Date | undefined;
   setDeliveryDate: (date: Date | undefined) => void;
   dateLabel: string;
@@ -1067,7 +1171,6 @@ function CheckoutDialog({
   updateCustomer: (key: keyof typeof customer, value: string) => void;
   nextStep: () => void;
   previousStep: () => void;
-  savings: ReturnType<typeof getSavings>;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1078,14 +1181,15 @@ function CheckoutDialog({
               Complete your order
             </DialogTitle>
             <DialogDescription className="text-brand-ink/60">
-              Your cart stays updated as you choose your routine and delivery details.
+              Your cart stays updated as you choose delivery details.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-6 grid grid-cols-3 gap-2">
+          <div className="mt-6 grid grid-cols-4 gap-2">
             {[
               [1, "Breakfast"],
-              [3, "Delivery"],
-              [5, "Review"],
+              [2, "Delivery"],
+              [3, "Details"],
+              [4, "Review"],
             ].map(([value, label]) => (
               <div key={label as string} className="flex items-center gap-2 text-xs font-bold">
                 <span
@@ -1100,6 +1204,7 @@ function CheckoutDialog({
                 </span>
                 <span
                   className={cn(
+                    "hidden sm:inline",
                     step >= (value as number) ? "text-brand-deep" : "text-brand-ink/40",
                   )}
                 >
@@ -1114,28 +1219,25 @@ function CheckoutDialog({
             <CheckoutProducts
               cart={cart}
               selectedProductIds={selectedProductIds}
-              toggleProduct={toggleProduct}
               updateQuantity={updateQuantity}
+              updateComboPlan={updateComboPlan}
             />
           )}
-          {step === 2 && <CheckoutPlan plan={plan} onPlanChange={onPlanChange} />}
-          {step === 3 && (
+          {step === 2 && (
             <CheckoutDate
               deliveryDate={deliveryDate}
               setDeliveryDate={setDeliveryDate}
               dateLabel={dateLabel}
             />
           )}
-          {step === 4 && <CheckoutDetails customer={customer} updateCustomer={updateCustomer} />}
-          {step === 5 && (
+          {step === 3 && <CheckoutDetails customer={customer} updateCustomer={updateCustomer} />}
+          {step === 4 && (
             <CheckoutReview
-              plan={plan}
               selectedProducts={selectedProducts}
               cart={cart}
               cartSubtotal={cartSubtotal}
               dateLabel={dateLabel}
               customer={customer}
-              savings={savings}
             />
           )}
         </div>
@@ -1151,8 +1253,8 @@ function CheckoutDialog({
             className="bg-brand-deep text-primary-foreground hover:bg-brand-green"
             onClick={nextStep}
           >
-            {step === 5 ? "Payment setup pending" : step === 4 ? "Review my order" : "Continue"}
-            {step < 5 && <ArrowRight />}
+            {step === 4 ? "Payment setup pending" : step === 3 ? "Review my order" : "Continue"}
+            {step < 4 && <ArrowRight />}
           </Button>
         </div>
       </DialogContent>
@@ -1163,36 +1265,37 @@ function CheckoutDialog({
 function CheckoutProducts({
   cart,
   selectedProductIds,
-  toggleProduct,
   updateQuantity,
+  updateComboPlan,
 }: {
   cart: Cart;
   selectedProductIds: string[];
-  toggleProduct: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  updateComboPlan: (id: string, plan: ComboPlanKey) => void;
 }) {
   return (
     <div>
       <CheckoutHeading
         step="01"
         title="What would you like?"
-        description="Choose breakfasts and adjust quantities before continuing."
+        description="Choose breakfasts, combos and adjust quantities before continuing."
       />
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {products.map((product) => {
-          const quantity = cart[product.id] ?? 0;
+          const item = cart[product.id];
+          const quantity = item?.quantity ?? 0;
           return (
             <div
               key={product.id}
               className={cn(
-                "flex items-center gap-3 border p-3 transition-colors",
+                "flex items-start gap-3 border p-3 transition-colors",
                 selectedProductIds.includes(product.id)
                   ? "border-brand-green bg-brand-sage/55"
                   : "border-brand-deep/15 hover:border-brand-green/50",
               )}
             >
               <button
-                onClick={() => toggleProduct(product.id)}
+                onClick={() => updateQuantity(product.id, quantity > 0 ? 0 : 1)}
                 className="size-16 shrink-0 overflow-hidden border border-brand-deep/10"
                 aria-label={`${quantity > 0 ? "Remove" : "Add"} ${product.name}`}
               >
@@ -1200,9 +1303,10 @@ function CheckoutProducts({
                   src={
                     {
                       fruit: fruitAsset.url,
-                      sprouts: sproutsAsset.url,
+                      salad: saladAsset.url,
                       juice: juiceAsset.url,
                       veggies: veggiesAsset.url,
+                      combo: fruitAsset.url,
                     }[product.visual]
                   }
                   alt={product.name}
@@ -1211,7 +1315,27 @@ function CheckoutProducts({
               </button>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-brand-deep">{product.name}</p>
-                <p className="mt-1 text-xs text-brand-ink/55">{formatPrice(product.price)}</p>
+                <p className="mt-1 text-xs text-brand-ink/55">
+                  {formatPrice(getProductPrice(product, item?.comboPlan))}
+                </p>
+                {product.comboPlans && quantity > 0 && (
+                  <div className="mt-2 inline-flex items-center gap-1">
+                    {comboPlanOrder.map((key) => (
+                      <button
+                        key={key}
+                        onClick={() => updateComboPlan(product.id, key)}
+                        className={cn(
+                          "px-2 py-1 text-[10px] font-bold uppercase tracking-wide",
+                          item?.comboPlan === key
+                            ? "bg-brand-deep text-primary-foreground"
+                            : "bg-brand-sage text-brand-deep hover:bg-brand-green/20",
+                        )}
+                      >
+                        {key === "daily" ? "Daily" : key === "weekly" ? "Weekly" : "Monthly"}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {quantity > 0 && (
                   <div className="mt-2 inline-flex items-center border border-brand-deep/15">
                     <Button
@@ -1251,59 +1375,6 @@ function CheckoutProducts({
   );
 }
 
-function CheckoutPlan({
-  plan,
-  onPlanChange,
-}: {
-  plan: (typeof plans)[number];
-  onPlanChange: (id: PlanId) => void;
-}) {
-  return (
-    <div>
-      <CheckoutHeading
-        step="02"
-        title="Your routine"
-        description="Choose what feels right. You can start once."
-      />
-      <div className="mt-6 space-y-3">
-        {plans.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => onPlanChange(option.id)}
-            className={cn(
-              "flex w-full items-start gap-3 border p-4 text-left",
-              plan.id === option.id
-                ? "border-brand-green bg-brand-sage/55"
-                : "border-brand-deep/15",
-            )}
-          >
-            <span
-              className={cn(
-                "mt-0.5 flex size-4 shrink-0 rounded-full border p-0.5",
-                plan.id === option.id ? "border-brand-green" : "border-brand-deep/30",
-              )}
-            >
-              {plan.id === option.id && <span className="size-full rounded-full bg-brand-green" />}
-            </span>
-            <span className="flex-1">
-              <span className="flex flex-wrap items-center gap-2 font-semibold text-brand-deep">
-                {option.name}
-                {option.badge && (
-                  <span className="text-[10px] uppercase tracking-[0.1em] text-brand-green">
-                    {option.badge}
-                  </span>
-                )}
-              </span>
-              <span className="mt-1 block text-sm text-brand-ink/60">{option.description}</span>
-            </span>
-            <span className="text-sm font-bold text-brand-deep">{formatPrice(option.price)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CheckoutDate({
   deliveryDate,
   setDeliveryDate,
@@ -1316,7 +1387,7 @@ function CheckoutDate({
   return (
     <div>
       <CheckoutHeading
-        step="03"
+        step="02"
         title="Choose your first delivery date"
         description="Pick the morning you want your breakfast routine to begin."
       />
@@ -1380,7 +1451,7 @@ function CheckoutDetails({
   return (
     <div>
       <CheckoutHeading
-        step="04"
+        step="03"
         title="Delivery details"
         description="Only the details needed to get breakfast to you."
       />
@@ -1426,15 +1497,12 @@ function CheckoutDetails({
 }
 
 function CheckoutReview({
-  plan,
   selectedProducts,
   cart,
   cartSubtotal,
   dateLabel,
   customer,
-  savings,
 }: {
-  plan: (typeof plans)[number];
   selectedProducts: Product[];
   cart: Cart;
   cartSubtotal: number;
@@ -1447,18 +1515,13 @@ function CheckoutReview({
     landmark: string;
     window: string;
   };
-  savings: ReturnType<typeof getSavings>;
 }) {
-  const offerDiscount = getOfferDiscount(plan);
-  const baseTotal = plan.price === null ? null : plan.price + cartSubtotal;
-  const total =
-    baseTotal === null
-      ? null
-      : Math.max(baseTotal - offerDiscount + (storefrontConfig.deliveryFee ?? 0), 0);
+  const offerDiscount = getOfferDiscount(cartSubtotal);
+  const total = Math.max(cartSubtotal - offerDiscount + (storefrontConfig.deliveryFee ?? 0), 0);
   return (
     <div>
       <CheckoutHeading
-        step="05"
+        step="04"
         title="Review your order"
         description="Here is everything before payment is connected."
       />
@@ -1466,32 +1529,29 @@ function CheckoutReview({
         <div>
           <p className="font-semibold text-brand-deep">Chosen breakfasts</p>
           <div className="mt-2 space-y-2 text-brand-ink/60">
-            {selectedProducts.map((product) => (
-              <div className="flex justify-between gap-4" key={product.id}>
-                <span>
-                  {product.name} × {cart[product.id] ?? 0}
-                </span>
-                <span>{formatPrice((product.price ?? 0) * (cart[product.id] ?? 0))}</span>
-              </div>
-            ))}
+            {selectedProducts.map((product) => {
+              const item = cart[product.id]!;
+              const lineTotal = getProductPrice(product, item.comboPlan) * item.quantity;
+              return (
+                <div className="flex justify-between gap-4" key={product.id}>
+                  <span>
+                    {product.name} × {item.quantity}
+                    {item.comboPlan && (
+                      <span className="ml-1 text-brand-ink/45">
+                        ({getComboPlanLabel(item.comboPlan)})
+                      </span>
+                    )}
+                  </span>
+                  <span>{formatPrice(lineTotal)}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="flex justify-between gap-4 border-t border-brand-deep/10 pt-3">
           <span>Menu subtotal</span>
           <span className="font-semibold">{formatPrice(cartSubtotal)}</span>
         </div>
-        <div className="flex justify-between gap-4">
-          <span>
-            {plan.name} · {plan.deliveries} {plan.deliveries === 1 ? "delivery" : "deliveries"}
-          </span>
-          <span className="font-semibold">{formatPrice(plan.price)}</span>
-        </div>
-        {savings && savings.amount > 0 && (
-          <div className="flex justify-between gap-4 text-brand-green">
-            <span>Plan savings included</span>
-            <span>-{formatPrice(savings.amount)}</span>
-          </div>
-        )}
         {offerDiscount > 0 && (
           <div className="flex justify-between gap-4 text-brand-green">
             <span>{storefrontConfig.offer.label}</span>
@@ -1508,7 +1568,7 @@ function CheckoutReview({
         </div>
         <div className="flex justify-between gap-4 border-t border-brand-deep/15 pt-4 text-base font-bold text-brand-deep">
           <span>Total</span>
-          <span>{total === null ? "Price pending" : formatPrice(total)}</span>
+          <span>{formatPrice(total)}</span>
         </div>
       </div>
       <div className="grid gap-3 bg-brand-sage/45 p-4 text-xs text-brand-ink/70">
