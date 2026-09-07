@@ -1252,8 +1252,8 @@ function CheckoutDialog({
         </div>
         <div className="flex flex-col-reverse gap-2 border-t border-brand-deep/10 px-5 py-4 sm:flex-row sm:justify-between sm:px-8">
           <Button
-            variant="ghost"
-            className="text-brand-deep"
+            variant="outline"
+            className="border-brand-deep/30 text-brand-deep hover:border-brand-deep hover:bg-brand-deep/5 hover:text-brand-deep"
             onClick={step === 1 ? () => onOpenChange(false) : previousStep}
           >
             {step === 1 ? "Keep browsing" : "Back"}
