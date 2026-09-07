@@ -141,7 +141,10 @@ export function getSavings(plan: Plan) {
   const equivalentOneTime = oneTime.price * plan.deliveries;
   return {
     amount: Math.max(equivalentOneTime - plan.price, 0),
-    percentage: equivalentOneTime > 0 ? Math.round(((equivalentOneTime - plan.price) / equivalentOneTime) * 100) : 0,
+    percentage:
+      equivalentOneTime > 0
+        ? Math.round(((equivalentOneTime - plan.price) / equivalentOneTime) * 100)
+        : 0,
   };
 }
 
