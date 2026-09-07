@@ -35,7 +35,7 @@ export const storefrontConfig = {
   deliveryFee: null as number | null,
 };
 
-export const products: Product[] = [
+export const products: [Product, Product, Product, Product] = [
   {
     id: "cut-fruit-bowl",
     name: "Cut Fruit Bowl",
@@ -78,7 +78,7 @@ export const products: Product[] = [
   },
 ];
 
-export const plans: Plan[] = [
+export const plans: [Plan, Plan, Plan] = [
   {
     id: "one-time",
     eyebrow: "JUST TRYING US?",
@@ -114,7 +114,8 @@ export const plans: Plan[] = [
 ];
 
 export function getPlan(planId: PlanId) {
-  return plans.find((plan) => plan.id === planId) ?? plans[1];
+  const defaultPlan = plans[1];
+  return plans.find((plan) => plan.id === planId) ?? defaultPlan;
 }
 
 export function formatPrice(value: number | null) {

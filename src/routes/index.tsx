@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Sparkles,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,13 @@ type CheckoutStep = 1 | 2 | 3 | 4 | 5;
 
 const whatsappMessage = (message: string) =>
   `https://wa.me/${storefrontConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+const operationalBenefits: Array<[LucideIcon, string, string]> = [
+  [Clock3, "Freshly prepared", "Prepared for the morning, not pulled from a shelf."],
+  [ShieldCheck, "Hygienically packed", "Packed with care so it arrives ready to enjoy."],
+  [ShoppingBag, "Doorstep delivery", "A calmer start, delivered where you need it."],
+  [MessageCircle, "WhatsApp support", "Need help? Reach us at 9780035199."],
+];
 
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -306,7 +314,7 @@ function HomePage() {
             <SectionIntro eyebrow="DELIVERY, WITHOUT THE DRAMA" title="Fresh breakfast without the morning work." description="Every order is prepared fresh, packed carefully, and sent to your doorstep." />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {[[Clock3, "Freshly prepared", "Prepared for the morning, not pulled from a shelf."], [ShieldCheck, "Hygienically packed", "Packed with care so it arrives ready to enjoy."], [ShoppingBag, "Doorstep delivery", "A calmer start, delivered where you need it."], [MessageCircle, "WhatsApp support", "Need help? Reach us at 9780035199."]].map(([Icon, title, text]) => <div className="border-l-2 border-brand-green px-5 py-1" key={title as string}><Icon className="size-5 text-brand-green" /><h3 className="mt-5 font-semibold text-brand-deep">{title as string}</h3><p className="mt-2 text-sm leading-6 text-brand-ink/65">{text as string}</p></div>)}
+            {operationalBenefits.map(([Icon, title, text]) => <div className="border-l-2 border-brand-green px-5 py-1" key={title}><Icon className="size-5 text-brand-green" /><h3 className="mt-5 font-semibold text-brand-deep">{title}</h3><p className="mt-2 text-sm leading-6 text-brand-ink/65">{text}</p></div>)}
           </div>
         </section>
 
