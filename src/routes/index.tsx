@@ -136,6 +136,10 @@ function HomePage() {
     });
   };
 
+  const addProduct = (productId: string) => {
+    setSelectedProductIds((ids) => (ids.includes(productId) ? ids : [...ids, productId]));
+  };
+
   const updateCustomer = (key: keyof typeof customer, value: string) => {
     setCustomer((details) => ({ ...details, [key]: value }));
   };
@@ -263,7 +267,7 @@ function HomePage() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} onAdd={() => {
-                toggleProduct(product.id);
+                addProduct(product.id);
                 toast.success(`${product.name} added to your order`);
               }} onPlan={() => openCheckout("six-day", product.id)} selected={selectedProductIds.includes(product.id)} />
             ))}
@@ -361,7 +365,7 @@ function FoodStillLife() {
 }
 
 function FoodBowl({ type }: { type: "fruit" | "sprouts" | "juice" | "veggies" }) {
-  const contents = { fruit: ["bg-orange-400", "bg-red-400", "bg-yellow-300", "bg-pink-400"], sprouts: ["bg-brand-green", "bg-lime-400", "bg-yellow-200", "bg-emerald-700"], juice: ["bg-lime-300", "bg-brand-green", "bg-yellow-200", "bg-emerald-500"], veggies: ["bg-orange-400", "bg-yellow-300", "bg-brand-green", "bg-red-400"] }[type];
+  const contents = { fruit: ["bg-food-orange", "bg-food-coral", "bg-food-yellow", "bg-food-pink"], sprouts: ["bg-brand-green", "bg-food-lime", "bg-food-yellow", "bg-food-emerald"], juice: ["bg-food-lime", "bg-brand-green", "bg-food-yellow", "bg-food-teal"], veggies: ["bg-food-orange", "bg-food-yellow", "bg-brand-green", "bg-food-coral"] }[type];
   return <div className="relative aspect-square border border-brand-deep/10 bg-brand-cream/75 p-3 shadow-soft sm:p-5"><div className="absolute inset-x-[14%] top-[18%] aspect-square rounded-full border-[10px] border-brand-deep/15 bg-brand-deep/10 sm:border-[14px]" /><div className="absolute inset-[25%] grid grid-cols-2 gap-1.5 sm:gap-2">{contents.map((color, index) => <span key={index} className={cn("rounded-full", color)} />)}</div><p className="absolute bottom-2 inset-x-0 text-center text-[9px] font-bold uppercase tracking-[0.12em] text-brand-deep/65 sm:bottom-3">{type === "juice" ? "juice" : "bowl"}</p></div>;
 }
 
