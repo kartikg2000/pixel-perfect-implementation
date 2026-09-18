@@ -167,8 +167,27 @@ function AdminDashboard() {
     return { total, pending, confirmed, delivered, revenue };
   }, [orders]);
 
-  if (!isAdminAuthenticated()) {
+  if (!sessionChecked) {
     return null;
+  }
+
+  if (isForbidden) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0f1a14] px-6 text-center">
+        <h1 className="font-display text-2xl text-white">Admin access required</h1>
+        <p className="max-w-sm text-sm text-white/45">
+          This account is signed in but is not yet approved as an admin. Ask the
+          site owner to grant admin access to this email.
+        </p>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          className="border-white/15 text-white/70 hover:bg-white/5 hover:text-white"
+        >
+          Sign out
+        </Button>
+      </div>
+    );
   }
 
   return (
