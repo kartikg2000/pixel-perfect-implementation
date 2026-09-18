@@ -1635,10 +1635,12 @@ function CheckoutDialog({
                 : "bg-brand-deep hover:bg-brand-green",
             )}
             onClick={nextStep}
+            disabled={isPlacingOrder}
           >
             {step === 4 ? (
               <span className="flex items-center gap-2">
-                <WhatsAppIcon className="size-4" /> Place Order on WhatsApp
+                <WhatsAppIcon className="size-4" />{" "}
+                {isPlacingOrder ? "Saving your order…" : "Place Order on WhatsApp"}
               </span>
             ) : step === 3 ? (
               "Review my order"
