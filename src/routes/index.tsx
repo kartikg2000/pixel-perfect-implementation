@@ -956,9 +956,15 @@ function HomePage() {
         </a>
         <Button
           className="h-11 flex-1 bg-brand-deep text-primary-foreground hover:bg-brand-green"
-          onClick={() => setCartOpen(true)}
+          onClick={() => {
+            if (cartCount > 0) {
+              setCartOpen(true);
+              return;
+            }
+            document.getElementById("menu")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         >
-          {cartCount > 0 ? `View my order · ${formatPrice(cartSubtotal)}` : "Order my breakfast"}{" "}
+          {cartCount > 0 ? `View my order · ${formatPrice(cartSubtotal)}` : "See the menu"}{" "}
           <ShoppingBag />
         </Button>
       </div>
