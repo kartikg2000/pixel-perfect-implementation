@@ -40,79 +40,12 @@ export type Order = {
   updatedAt: string;
 };
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const ORDERS_KEY = "mhp_orders";
-const AUTH_KEY = "mhp_admin_auth";
-
-const ADMIN_CREDENTIALS = {
-  username: "admin",
-  password: "mhp@admin2024",
-};
-
 // ─── Order helpers ───────────────────────────────────────────────────────────
 
 export function generateOrderId(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `MHP-${ts}-${rand}`;
-}
-
-export function getOrders(): Order[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(ORDERS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Order[];
-  } catch {
-    return [];
-  }
-}
-
-export function saveOrder(order: Order): void {
-  const orders = getOrders();
-  orders.unshift(order);
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
-
-export function updateOrderStatus(orderId: string, status: OrderStatus): void {
-  const orders = getOrders();
-  const existing = orders.find((o) => o.id === orderId);
-  if (!existing) return;
-  existing.status = status;
-  existing.updatedAt = new Date().toISOString();
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
-
-export function deleteOrder(orderId: string): void {
-  const orders = getOrders().filter((o) => o.id !== orderId);
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
-
-// ─── Auth helpers ────────────────────────────────────────────────────────────
-
-export function isAdminAuthenticated(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(AUTH_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-export function loginAdmin(username: string, password: string): boolean {
-  if (
-    username === ADMIN_CREDENTIALS.username &&
-    password === ADMIN_CREDENTIALS.password
-  ) {
-    localStorage.setItem(AUTH_KEY, "true");
-    return true;
-  }
-  return false;
-}
-
-export function logoutAdmin(): void {
-  localStorage.removeItem(AUTH_KEY);
 }
 
 // ─── Status display helpers ──────────────────────────────────────────────────

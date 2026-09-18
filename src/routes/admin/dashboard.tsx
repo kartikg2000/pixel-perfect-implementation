@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -34,15 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  getOrders,
-  updateOrderStatus,
-  deleteOrder,
-  isAdminAuthenticated,
-  logoutAdmin,
   ORDER_STATUS_CONFIG,
   type Order,
   type OrderStatus,
 } from "@/lib/admin-store";
+import { listOrders, setOrderStatus, removeOrder } from "@/lib/orders.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { formatPrice, getComboPlanLabel } from "@/lib/storefront-data";
 import logoImg from "@/assets/mhp-logo.png";
 
@@ -70,38 +69,67 @@ const ALL_STATUSES: OrderStatus[] = [
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Auth guard
+  const fetchOrders = useServerFn(listOrders);
+  const updateStatusFn = useServerFn(setOrderStatus);
+  const deleteOrderFn = useServerFn(removeOrder);
+
+  // Auth guard — send signed-out visitors back to the sign-in page
   useEffect(() => {
-    if (!isAdminAuthenticated()) {
-      navigate({ to: "/admin" });
-    }
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (!data.session) {
+        void navigate({ to: "/admin" });
+        return;
+      }
+      setSessionChecked(true);
+    });
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
-  // Load orders
-  useEffect(() => {
-    setOrders(getOrders());
-  }, []);
+  const ordersQuery = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: () => fetchOrders(),
+    enabled: sessionChecked,
+  });
 
-  const handleLogout = () => {
-    logoutAdmin();
+  const orders: Order[] = ordersQuery.data ?? [];
+  const isForbidden =
+    ordersQuery.isError && /forbidden/i.test(String(ordersQuery.error));
+
+  const handleLogout = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
     toast.success("Logged out successfully");
-    navigate({ to: "/admin" });
+    void navigate({ to: "/admin", replace: true });
   };
 
-  const handleStatusChange = (orderId: string, status: OrderStatus) => {
-    updateOrderStatus(orderId, status);
-    setOrders(getOrders());
-    toast.success(`Order updated to ${ORDER_STATUS_CONFIG[status].label}`);
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    try {
+      await updateStatusFn({ data: { id: orderId, status } });
+      await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast.success(`Order updated to ${ORDER_STATUS_CONFIG[status].label}`);
+    } catch {
+      toast.error("Could not update the order. Please try again.");
+    }
   };
 
-  const handleDelete = (orderId: string) => {
-    deleteOrder(orderId);
-    setOrders(getOrders());
-    toast.success("Order deleted");
+  const handleDelete = async (orderId: string) => {
+    try {
+      await deleteOrderFn({ data: { id: orderId } });
+      await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast.success("Order deleted");
+    } catch {
+      toast.error("Could not delete the order. Please try again.");
+    }
   };
 
   // Filtering
@@ -139,8 +167,27 @@ function AdminDashboard() {
     return { total, pending, confirmed, delivered, revenue };
   }, [orders]);
 
-  if (!isAdminAuthenticated()) {
+  if (!sessionChecked) {
     return null;
+  }
+
+  if (isForbidden) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0f1a14] px-6 text-center">
+        <h1 className="font-display text-2xl text-white">Admin access required</h1>
+        <p className="max-w-sm text-sm text-white/45">
+          This account is signed in but is not yet approved as an admin. Ask the
+          site owner to grant admin access to this email.
+        </p>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          className="border-white/15 text-white/70 hover:bg-white/5 hover:text-white"
+        >
+          Sign out
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -251,7 +298,25 @@ function AdminDashboard() {
 
         {/* Orders table */}
         <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
-          {filteredOrders.length === 0 ? (
+          {ordersQuery.isLoading ? (
+            <div className="flex items-center justify-center px-6 py-20 text-sm text-white/40">
+              Loading orders…
+            </div>
+          ) : ordersQuery.isError ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+              <p className="text-sm font-medium text-white/50">
+                Could not load orders right now.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void ordersQuery.refetch()}
+                className="border-white/15 text-white/70 hover:bg-white/5 hover:text-white"
+              >
+                Try again
+              </Button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
               <Package className="mb-4 size-12 text-white/10" />
               <p className="text-sm font-medium text-white/40">
@@ -310,8 +375,8 @@ function AdminDashboard() {
 
         {/* Footer info */}
         <p className="mt-4 text-center text-xs text-white/15">
-          Showing {filteredOrders.length} of {orders.length} orders · Data
-          stored locally in this browser
+          Showing {filteredOrders.length} of {orders.length} orders · Saved
+          securely in your database
         </p>
       </main>
     </div>

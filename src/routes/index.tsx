@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { createOrder } from "@/lib/orders.functions";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -68,7 +70,6 @@ import {
 } from "@/lib/storefront-data";
 import {
   generateOrderId,
-  saveOrder,
   type Order,
   type OrderItem,
 } from "@/lib/admin-store";
@@ -204,6 +205,8 @@ function HomePage() {
   const [confirmedDateLabel, setConfirmedDateLabel] = useState("");
   const [confirmedWhatsAppUrl, setConfirmedWhatsAppUrl] = useState("");
   const [upiCopied, setUpiCopied] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const createOrderFn = useServerFn(createOrder);
 
   const selectedProductIds = useMemo(
     () => Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0),
@@ -345,7 +348,7 @@ function HomePage() {
       }
     }
     if (checkoutStep === 4) {
-      // Save order to localStorage for admin dashboard
+      if (isPlacingOrder) return;
       const offerDiscount = getOfferDiscount(cartSubtotal);
       const total = Math.max(cartSubtotal - offerDiscount + (storefrontConfig.deliveryFee ?? 0), 0);
       const orderItems: OrderItem[] = selectedProducts.map((product) => ({
@@ -368,8 +371,46 @@ function HomePage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      saveOrder(order);
+      // Save the order in the database before confirming anything
+      setIsPlacingOrder(true);
+      void (async () => {
+        try {
+          await createOrderFn({
+            data: {
+              id: order.id,
+              items: orderItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                ...(item.comboPlan ? { comboPlan: item.comboPlan } : {}),
+              })),
+              customer: {
+                name: customer.name,
+                mobile: customer.mobile,
+                address: customer.address,
+                pin: customer.pin,
+                landmark: customer.landmark,
+                window: customer.window,
+                ...(customer.notes ? { notes: customer.notes } : {}),
+              },
+              deliveryDate: order.deliveryDate,
+            },
+          });
+        } catch {
+          setIsPlacingOrder(false);
+          toast.error(
+            "We couldn't save your order. Please try again, or send it to us on WhatsApp.",
+          );
+          return;
+        }
+        setIsPlacingOrder(false);
+        finishOrder(order);
+      })();
+      return;
+    }
+    setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
+  };
 
+  const finishOrder = (order: Order) => {
       // Build WhatsApp URL with all order details
       const whatsappUrl = buildWhatsAppOrderUrl(order, dateLabel);
 
@@ -391,9 +432,6 @@ function HomePage() {
       // Show confirmation dialog and open WhatsApp
       setOrderSuccessOpen(true);
       window.open(whatsappUrl, "_blank");
-      return;
-    }
-    setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
   };
 
   const previousStep = () => {
@@ -914,6 +952,7 @@ function HomePage() {
         touchedFields={touchedFields}
         handleBlur={handleBlur}
         nextStep={nextStep}
+        isPlacingOrder={isPlacingOrder}
         previousStep={previousStep}
       />
       <OrderConfirmationDialog
@@ -1471,6 +1510,7 @@ function CheckoutDialog({
   touchedFields,
   handleBlur,
   nextStep,
+  isPlacingOrder,
   previousStep,
 }: {
   open: boolean;
@@ -1499,6 +1539,7 @@ function CheckoutDialog({
   touchedFields: CustomerTouchedFields;
   handleBlur: (key: keyof typeof customer) => void;
   nextStep: () => void;
+  isPlacingOrder: boolean;
   previousStep: () => void;
 }) {
   return (
@@ -1594,10 +1635,12 @@ function CheckoutDialog({
                 : "bg-brand-deep hover:bg-brand-green",
             )}
             onClick={nextStep}
+            disabled={isPlacingOrder}
           >
             {step === 4 ? (
               <span className="flex items-center gap-2">
-                <WhatsAppIcon className="size-4" /> Place Order on WhatsApp
+                <WhatsAppIcon className="size-4" />{" "}
+                {isPlacingOrder ? "Saving your order…" : "Place Order on WhatsApp"}
               </span>
             ) : step === 3 ? (
               "Review my order"
