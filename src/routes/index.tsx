@@ -1183,7 +1183,7 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
           </div>
           <div>
             <p className="font-display text-2xl text-brand-deep sm:text-3xl">Mohali</p>
-            <p className="mt-1 text-xs text-brand-ink/65">Mohali Phase 7, 3B2, 8, Sec 70 & more nearby areas</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Mohali and nearby areas</p>
           </div>
         </div>
 
