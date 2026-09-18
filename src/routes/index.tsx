@@ -138,6 +138,7 @@ function getProductImage(product: Product) {
 }
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "My Healthy Platter | Fresh breakfast, sorted" },
@@ -151,11 +152,55 @@ export const Route = createFileRoute("/")({
         content: "Fresh, healthy breakfast prepared for you and delivered to your doorstep.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://myhealthyplatter.lovable.app/" },
       { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://myhealthyplatter.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "FoodEstablishment",
+              "@id": "https://myhealthyplatter.lovable.app/#business",
+              name: storefrontConfig.brand,
+              description:
+                "Fresh, healthy breakfast prepared for you and delivered to your doorstep.",
+              url: "https://myhealthyplatter.lovable.app/",
+              telephone: `+91${storefrontConfig.phone}`,
+              servesCuisine: "Healthy breakfast",
+              priceRange: "₹₹",
+              areaServed: storefrontConfig.deliveryArea,
+              address: {
+                "@type": "PostalAddress",
+                addressLocality: storefrontConfig.deliveryArea,
+                addressCountry: "IN",
+              },
+            },
+            ...products.map((product) => ({
+              "@type": "Product",
+              name: product.name,
+              description: product.description,
+              image: `https://myhealthyplatter.lovable.app${getProductImage(product)}`,
+              brand: { "@type": "Brand", name: storefrontConfig.brand },
+              offers: {
+                "@type": "Offer",
+                price: product.price,
+                priceCurrency: "INR",
+                availability: "https://schema.org/InStock",
+                url: "https://myhealthyplatter.lovable.app/",
+              },
+            })),
+          ],
+        }),
+      },
     ],
   }),
   component: HomePage,
 });
+
 
 type CheckoutStep = 1 | 2 | 3 | 4;
 type CartItem = { quantity: number; comboPlan?: ComboPlanKey | undefined };
