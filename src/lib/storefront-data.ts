@@ -37,11 +37,11 @@ export const storefrontConfig = {
   website: "myhealthyplatter.com",
   deliveryArea: "Mohali",
   cutoffTime: "9:30 PM",
-  cutoffBannerText: "Order before 9:30 PM for next morning delivery (7:00 AM – 11:00 AM)",
+  cutoffBannerText: "Order before 9:30 PM for next day delivery (8:00 AM – 2:00 PM)",
   offer: {
-    enabled: true,
-    label: "10% OFF TILL 30 SEPTEMBER",
-    discountRate: 0.1,
+    enabled: false,
+    label: "",
+    discountRate: 0,
   },
   deliveryFee: 0 as number | null,
   deliveryLabel: "Free delivery launch offer",
@@ -485,14 +485,18 @@ export function buildWhatsAppOrderUrl(order: WhatsAppOrderPayload, dateLabel?: s
 }
 
 export const DELIVERY_TIME_SLOTS = [
-  "7:00 AM - 7:30 AM",
-  "7:30 AM - 8:00 AM",
   "8:00 AM - 8:30 AM",
   "8:30 AM - 9:00 AM",
   "9:00 AM - 9:30 AM",
   "9:30 AM - 10:00 AM",
   "10:00 AM - 10:30 AM",
   "10:30 AM - 11:00 AM",
+  "11:00 AM - 11:30 AM",
+  "11:30 AM - 12:00 PM",
+  "12:00 PM - 12:30 PM",
+  "12:30 PM - 1:00 PM",
+  "1:00 PM - 1:30 PM",
+  "1:30 PM - 2:00 PM",
 ] as const;
 
 export type DeliveryTimeSlot = (typeof DELIVERY_TIME_SLOTS)[number];
