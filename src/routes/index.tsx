@@ -1219,9 +1219,7 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-brand-deep">{review.name}</h4>
-                    <p className="text-xs text-brand-ink/60">
-                      {review.role} · <span className="font-medium text-brand-green">{review.location}</span>
-                    </p>
+                    <p className="text-xs text-brand-ink/60">{review.role}</p>
                   </div>
                 </div>
 
