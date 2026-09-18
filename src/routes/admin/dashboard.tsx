@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -34,15 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  getOrders,
-  updateOrderStatus,
-  deleteOrder,
-  isAdminAuthenticated,
-  logoutAdmin,
   ORDER_STATUS_CONFIG,
   type Order,
   type OrderStatus,
 } from "@/lib/admin-store";
+import { listOrders, setOrderStatus, removeOrder } from "@/lib/orders.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { formatPrice, getComboPlanLabel } from "@/lib/storefront-data";
 import logoImg from "@/assets/mhp-logo.png";
 
