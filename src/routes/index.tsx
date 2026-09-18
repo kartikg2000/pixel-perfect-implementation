@@ -640,8 +640,7 @@ function HomePage() {
               ))}
             </div>
             <p className="mt-6 inline-flex items-center gap-2 border border-brand-green/25 bg-brand-sage/55 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-brand-deep">
-              <Sparkles className="size-3.5 text-brand-green" /> {storefrontConfig.offer.label} ·{" "}
-              {storefrontConfig.deliveryLabel}
+              <Sparkles className="size-3.5 text-brand-green" /> {storefrontConfig.deliveryLabel}
             </p>
           </div>
           <FoodStillLife />
@@ -957,9 +956,15 @@ function HomePage() {
         </a>
         <Button
           className="h-11 flex-1 bg-brand-deep text-primary-foreground hover:bg-brand-green"
-          onClick={() => setCartOpen(true)}
+          onClick={() => {
+            if (cartCount > 0) {
+              setCartOpen(true);
+              return;
+            }
+            document.getElementById("menu")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         >
-          {cartCount > 0 ? `View my order · ${formatPrice(cartSubtotal)}` : "Order my breakfast"}{" "}
+          {cartCount > 0 ? `View my order · ${formatPrice(cartSubtotal)}` : "See the menu"}{" "}
           <ShoppingBag />
         </Button>
       </div>
@@ -1148,7 +1153,7 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
           <SectionIntro
             eyebrow="EARLY SUBSCRIBERS · MOHALI"
             title="Loved by Mohali's morning risers."
-            description="Real feedback from early testers and routine subscribers across Phase 7, Sector 70, Phase 8, and Phase 3B2."
+            description="Real feedback from early testers and routine subscribers."
           />
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 border border-brand-deep/15 bg-brand-cream px-3.5 py-2">
@@ -1178,12 +1183,12 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
             <p className="mt-1 text-xs text-brand-ink/65">Cold-pressed · No added sugar</p>
           </div>
           <div>
-            <p className="font-display text-2xl text-brand-deep sm:text-3xl">7 – 11 AM</p>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">8 AM – 2 PM</p>
             <p className="mt-1 text-xs text-brand-ink/65">Guaranteed on-time slots</p>
           </div>
           <div>
             <p className="font-display text-2xl text-brand-deep sm:text-3xl">Mohali</p>
-            <p className="mt-1 text-xs text-brand-ink/65">Phase 7, 3B2, 8, Sec 70 & more</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Mohali and nearby areas</p>
           </div>
         </div>
 
@@ -1219,9 +1224,7 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-brand-deep">{review.name}</h4>
-                    <p className="text-xs text-brand-ink/60">
-                      {review.role} · <span className="font-medium text-brand-green">{review.location}</span>
-                    </p>
+                    <p className="text-xs text-brand-ink/60">{review.role}</p>
                   </div>
                 </div>
 
@@ -2030,11 +2033,11 @@ function CheckoutDetails({
           />
         </div>
 
-        {/* Preferred Delivery Window: 7am to 11am, 30 min each */}
+        {/* Preferred Delivery Window: 8am to 2pm, 30 min each */}
         <div className="mt-2 sm:col-span-2">
           <div className="flex items-center justify-between">
             <Label className="font-semibold text-brand-deep">
-              Preferred Morning Delivery Slot <span className="text-destructive">*</span>
+              Preferred Delivery Slot <span className="text-destructive">*</span>
             </Label>
             {customer.window && (
               <span className="text-xs font-bold text-brand-green">
@@ -2043,7 +2046,7 @@ function CheckoutDetails({
             )}
           </div>
           <p className="mt-0.5 text-xs text-brand-ink/60">
-            Fresh morning delivery between 7:00 AM and 11:00 AM (30-min windows)
+            Delivery between 8:00 AM and 2:00 PM (30-min windows)
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {DELIVERY_TIME_SLOTS.map((slot) => {
@@ -2154,12 +2157,6 @@ function CheckoutReview({
           <span>Menu subtotal</span>
           <span className="font-semibold">{formatPrice(cartSubtotal)}</span>
         </div>
-        {offerDiscount > 0 && (
-          <div className="flex justify-between gap-4 text-brand-green">
-            <span>{storefrontConfig.offer.label}</span>
-            <span>-{formatPrice(offerDiscount)}</span>
-          </div>
-        )}
         <div className="flex justify-between gap-4">
           <span>{storefrontConfig.deliveryLabel}</span>
           <span>
