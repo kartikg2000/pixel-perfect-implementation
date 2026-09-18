@@ -46,6 +46,10 @@ import { formatPrice, getComboPlanLabel } from "@/lib/storefront-data";
 import logoImg from "@/assets/mhp-logo.png";
 
 export const Route = createFileRoute("/admin/dashboard")({
+  staticData: { sitemap: false },
+  head: () => ({
+    meta: [{ name: "robots", content: "noindex" }],
+  }),
   component: AdminDashboard,
 });
 

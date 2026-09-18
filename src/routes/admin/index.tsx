@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoImg from "@/assets/mhp-logo.png";
 
 export const Route = createFileRoute("/admin/")({
+  staticData: { sitemap: false },
   component: AdminLoginPage,
   head: () => ({
     meta: [
