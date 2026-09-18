@@ -1,4 +1,4 @@
-# Save orders in a real database + secure admin portal
+- Save orders in a real database + secure admin portal
 
 Right now every order lives only in the browser of the person who placed it, and the admin portal uses a shared password typed into the code. This turns on Lovable Cloud so orders are stored for real and only you can see them.
 
