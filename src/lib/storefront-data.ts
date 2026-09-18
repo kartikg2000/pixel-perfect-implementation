@@ -17,7 +17,8 @@ export type Product = {
   portion: string;
   visual: "fruit" | "salad" | "juice" | "veggies" | "combo";
   price: number;
-  comboPlans?: Record<ComboPlanKey, number>;
+  comboPlans?: Record<ComboPlanKey, number> | undefined;
+  badges?: string[] | undefined;
 };
 
 export type CategoryInfo = {
@@ -29,11 +30,14 @@ export type CategoryInfo = {
 
 export const storefrontConfig = {
   brand: "MY HEALTHY PLATTER",
-  phone: "9780035199",
-  whatsappNumber: "919780035199",
+  phone: "9780053199",
+  whatsappNumber: "919780053199",
+  upiId: "9780053199@upi",
   instagram: "@myhealthyplatter_",
   website: "myhealthyplatter.com",
   deliveryArea: "Mohali",
+  cutoffTime: "9:30 PM",
+  cutoffBannerText: "Order before 9:30 PM for next morning delivery (7:00 AM – 11:00 AM)",
   offer: {
     enabled: true,
     label: "10% OFF TILL 30 SEPTEMBER",
@@ -46,162 +50,197 @@ export const storefrontConfig = {
 export const categories: CategoryInfo[] = [
   {
     id: "cut-fruits",
-    title: "Cut Fruits",
-    subtitle: "Fresh, seasonal fruit bowls",
+    title: "Fresh Cuts",
+    subtitle: "5 Fresh Fruits bowl (500ml)",
     visual: "fruit",
   },
   {
     id: "detox-juices",
-    title: "Detox Juices",
-    subtitle: "Cold-pressed morning juices",
+    title: "Cold-Pressed Detox Juices",
+    subtitle: "100% natural morning detox blends (300ml)",
     visual: "juice",
   },
   {
     id: "salad-box",
-    title: "Salad Box",
-    subtitle: "Wholesome salads & protein add-ons",
+    title: "Signature Salads",
+    subtitle: "High-protein & exotic veggie bowls in lemon & pomegranate (500ml)",
     visual: "salad",
   },
   {
     id: "saute-veggies",
-    title: "Sauté Veggies",
-    subtitle: "Lightly sautéed seasonal vegetables",
+    title: "Seasonal Greens",
+    subtitle: "PAN tossed fresh paneer & exotic veggies (500ml)",
     visual: "veggies",
   },
   {
     id: "combos",
     title: "Combos",
-    subtitle: "Favourite pairings, better value",
+    subtitle: "The Glow, Balance & Complete Rituals in Daily, Weekly & Monthly plans",
     visual: "combo",
   },
 ];
 
 export const products: Product[] = [
-  // Cut Fruits
+  // Fresh Cuts
   {
-    id: "fresh-cut-fruit-box",
-    name: "Fresh Cut Fruit Box",
-    shortName: "Fruit box",
+    id: "exotic-fruit-bowl",
+    name: "Exotic Fruit Bowl",
+    shortName: "Exotic fruit bowl",
     category: "cut-fruits",
-    description: "Seasonal fruits, freshly cut and packed ready to eat.",
-    ingredients: "Seasonal fruit selection",
-    portion: "500 ml bowl",
+    description: "5 fresh fruits, freshly cut and packed ready to eat.",
+    ingredients: "5 Fresh Fruits",
+    portion: "500 ml",
     visual: "fruit",
     price: 129,
+    badges: ["5 Seasonal Fruits", "Immunity Booster"],
   },
-  // Detox Juices
+  // Cold-Pressed Detox Juices
   {
-    id: "green-energy-juice",
-    name: "Green Energy Juice",
-    shortName: "Green energy",
+    id: "verdant-vitality",
+    name: "Verdant Vitality",
+    shortName: "Verdant vitality",
     category: "detox-juices",
-    description: "A refreshing green juice to start the morning.",
-    ingredients: "Fresh greens · cucumber · citrus",
+    description: "Cold-pressed detox juice to refresh and purify your morning.",
+    ingredients: "Green Apple, Cucumber, Spinach, Lettuce, Mint, Lemon",
     portion: "300 ml",
     visual: "juice",
     price: 149,
+    badges: ["100% Raw", "No Added Sugar", "Cold-Pressed"],
   },
   {
-    id: "skin-glow-juice",
-    name: "Skin Glow Juice",
-    shortName: "Skin glow",
+    id: "ruby-radiance",
+    name: "Ruby Radiance",
+    shortName: "Ruby radiance",
     category: "detox-juices",
-    description: "A bright, antioxidant-rich juice for the morning.",
-    ingredients: "Beetroot · carrot · citrus",
+    description: "Antioxidant-rich cold-pressed juice for natural glow and vitality.",
+    ingredients: "Red Apple, Beetroot, Carrot, Cucumber, Mint, Lemon",
     portion: "300 ml",
     visual: "juice",
     price: 149,
+    badges: ["100% Raw", "No Added Sugar", "Cold-Pressed"],
   },
   {
-    id: "immunity-boost-juice",
-    name: "Immunity Boost Juice",
-    shortName: "Immunity boost",
+    id: "citrus-vital",
+    name: "Citrus Vital",
+    shortName: "Citrus vital",
     category: "detox-juices",
-    description: "A citrus and root-vegetable blend for an active start.",
-    ingredients: "Carrot · orange · ginger · turmeric",
+    description: "Invigorating citrus blend packed with natural vitamins.",
+    ingredients: "Orange, Sweet Lime, Carrot, Mint",
     portion: "300 ml",
     visual: "juice",
     price: 149,
+    badges: ["100% Raw", "No Added Sugar", "Cold-Pressed"],
   },
-  // Salad Box
+  // Signature Salads
   {
-    id: "chickpea-salad",
-    name: "Chickpea Salad",
-    shortName: "Chickpea salad",
+    id: "chickpea-harvest",
+    name: "Chickpea Harvest",
+    shortName: "Chickpea harvest",
     category: "salad-box",
-    description: "Protein-rich chickpeas with fresh vegetables.",
-    ingredients: "Chickpeas · cucumber · tomato · onion",
-    portion: "375 ml bowl",
+    description: "Protein-rich chickpeas tossed with exotic veggies, fresh lemon, and pomegranate.",
+    ingredients: "Chickpea with Exotic Veggies in Lemon, Pomegranate",
+    portion: "500 ml",
     visual: "salad",
     price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
   },
   {
-    id: "rajma-salad",
-    name: "Rajma Salad",
-    shortName: "Rajma salad",
+    id: "rajma-garden",
+    name: "Rajma Garden",
+    shortName: "Rajma garden",
     category: "salad-box",
-    description: "Kidney beans tossed with crunchy salad vegetables.",
-    ingredients: "Rajma · onion · tomato · capsicum",
-    portion: "375 ml bowl",
+    description: "Kidney beans combined with exotic veggies tossed in zesty lemon and pomegranate.",
+    ingredients: "Rajma with Exotic Veggies in Lemon, Pomegranate",
+    portion: "500 ml",
     visual: "salad",
     price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
   },
   {
-    id: "moong-dal-sprouts",
-    name: "Moong Dal Sprouts",
-    shortName: "Moong sprouts",
+    id: "moong-sprout-crunch",
+    name: "Moong Sprout Crunch",
+    shortName: "Moong sprout crunch",
     category: "salad-box",
-    description: "Light, sprouted moong dal with fresh salad trimmings.",
-    ingredients: "Sprouted moong · vegetables · lemon",
-    portion: "375 ml bowl",
+    description: "Crisp sprouted moong and peanuts tossed with exotic veggies, lemon, and pomegranate.",
+    ingredients: "Sprouts, Peanut, Exotic Veggies in Lemon, Pomegranate",
+    portion: "500 ml",
     visual: "salad",
     price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
   },
   {
-    id: "soya-chunks-salad",
-    name: "Soya Chunks Salad",
-    shortName: "Soya chunks salad",
+    id: "soya-protein-bowl",
+    name: "Soya Protein Bowl",
+    shortName: "Soya protein bowl",
     category: "salad-box",
-    description: "High-protein soya chunks with fresh salad vegetables.",
-    ingredients: "Soya chunks · cucumber · tomato · onion",
-    portion: "375 ml bowl",
+    description: "High-protein soya beans and peanuts with exotic veggies tossed in olive oil and lemon.",
+    ingredients: "Soya bean, Peanuts, Exotic Veggies in Lemon, Olive Oil",
+    portion: "500 ml",
     visual: "salad",
     price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
   },
   {
-    id: "carrot-cucumber-salad",
-    name: "Carrot Cucumber Salad",
-    shortName: "Carrot cucumber salad",
+    id: "black-chickpea-harvest",
+    name: "Black Chickpea Harvest",
+    shortName: "Black chickpea harvest",
     category: "salad-box",
-    description: "A simple, crunchy salad of carrots and cucumber.",
-    ingredients: "Carrot · cucumber · lemon · herbs",
-    portion: "375 ml bowl",
+    description: "Nutritious black chickpeas with exotic veggies in refreshing lemon and pomegranate.",
+    ingredients: "Black Chickpea with Exotic Veggies in Lemon, Pomegranate",
+    portion: "500 ml",
     visual: "salad",
     price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
   },
-  // Sauté Veggies
   {
-    id: "saute-veggies",
-    name: "Sauté Veggies",
-    shortName: "Sauté veggies",
+    id: "golden-harvest",
+    name: "Golden Harvest",
+    shortName: "Golden harvest",
+    category: "salad-box",
+    description: "Sweet corn kernels and vibrant exotic veggies tossed in fresh lemon dressing.",
+    ingredients: "Sweet Corn, Exotic Veggies in Lemon",
+    portion: "500 ml",
+    visual: "salad",
+    price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
+  },
+  {
+    id: "mixed-salad-bowl",
+    name: "Mixed Salad Bowl",
+    shortName: "Mixed salad bowl",
+    category: "salad-box",
+    description: "Hearty mix of rajma, white chickpea, and black chickpea with exotic veggies in lemon.",
+    ingredients: "Rajma, Chickpea, Black Chickpea, Exotic Veggies in Lemon",
+    portion: "500 ml",
+    visual: "salad",
+    price: 129,
+    badges: ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"],
+  },
+  // Seasonal Greens
+  {
+    id: "garden-saute-bowl",
+    name: "Garden Saute Bowl",
+    shortName: "Garden saute bowl",
     category: "saute-veggies",
-    description: "Fresh vegetables lightly sautéed for a warm breakfast.",
-    ingredients: "Seasonal vegetables · herbs",
-    portion: "375 ml bowl",
+    description: "PAN tossed fresh paneer with exotic vegetables for a nourishing warm bowl.",
+    ingredients: "PAN Tossed Fresh Paneer Exotic veggies",
+    portion: "500 ml",
     visual: "veggies",
     price: 149,
+    badges: ["Fresh Paneer", "Low Carb"],
   },
   // Combos
   {
-    id: "combo-fruit-juice",
-    name: "Fresh Cut Fruit Box + Detox Juice",
-    shortName: "Fruit + juice",
+    id: "the-glow-ritual",
+    name: "The Glow Ritual",
+    shortName: "The Glow Ritual",
     category: "combos",
-    description: "A fruit bowl paired with a fresh detox juice.",
-    ingredients: "Fresh cut fruit + detox juice of choice",
-    portion: "500 ml bowl + 300 ml juice",
+    description: "Exotic Fruit Bowl (500ml) + Cold-Pressed Detox Juice (300ml).",
+    ingredients: "Exotic Fruit Bowl + Cold-Pressed Detox Juice",
+    portion: "500 ml + 300 ml",
     visual: "combo",
     price: 229,
+    badges: ["Fruit Bowl + Detox Juice", "Daily Radiance"],
     comboPlans: {
       daily: 229,
       weekly: 1299,
@@ -209,15 +248,16 @@ export const products: Product[] = [
     },
   },
   {
-    id: "combo-fruit-salad",
-    name: "Fresh Cut Fruit Box + Salad Box",
-    shortName: "Fruit + salad",
+    id: "the-balance-ritual",
+    name: "The Balance Ritual",
+    shortName: "The Balance Ritual",
     category: "combos",
-    description: "A fruit bowl paired with a wholesome salad box.",
-    ingredients: "Fresh cut fruit + salad of choice",
-    portion: "500 ml bowl + 375 ml salad",
+    description: "Exotic Fruit Bowl (500ml) + Signature Salads (500ml).",
+    ingredients: "Exotic Fruit Bowl + Signature Salads",
+    portion: "500 ml + 500 ml",
     visual: "combo",
     price: 219,
+    badges: ["High Protein Salad + Fruit", "Clean Fuel"],
     comboPlans: {
       daily: 219,
       weekly: 1199,
@@ -225,20 +265,109 @@ export const products: Product[] = [
     },
   },
   {
-    id: "combo-fruit-salad-juice",
-    name: "Fresh Cut Fruit Box + Salad Box + Detox Juice",
-    shortName: "Fruit + salad + juice",
+    id: "the-complete-ritual",
+    name: "The Complete Ritual",
+    shortName: "The Complete Ritual",
     category: "combos",
-    description: "The full breakfast: fruit, salad and a detox juice.",
-    ingredients: "Fresh cut fruit + salad + detox juice of choice",
-    portion: "500 ml bowl + 375 ml salad + 300 ml juice",
+    description: "Exotic Fruit Bowl (500ml) + Signature Salads (500ml) + Cold-Pressed Detox Juice (300ml).",
+    ingredients: "Exotic Fruit Bowl + Signature Salads + Cold-Pressed Detox Juice",
+    portion: "500 ml + 500 ml + 300 ml",
     visual: "combo",
     price: 319,
+    badges: ["Fruit + Salad + Juice", "Complete Nutrition"],
     comboPlans: {
       daily: 319,
       weekly: 1799,
       monthly: 6999,
     },
+  },
+];
+
+export function getProductBadges(product: Product): string[] {
+  if (product.badges && product.badges.length > 0) {
+    return product.badges;
+  }
+  switch (product.category) {
+    case "detox-juices":
+      return ["100% Raw", "No Added Sugar", "Cold-Pressed"];
+    case "salad-box":
+      return ["High Protein (15g+)", "Rich in Fiber", "100% Vegan"];
+    case "saute-veggies":
+      return ["Fresh Paneer", "Low Carb"];
+    case "cut-fruits":
+      return ["5 Seasonal Fruits", "Immunity Booster"];
+    case "combos":
+      return ["Balanced Nutrition", "Clean Fuel"];
+    default:
+      return [];
+  }
+}
+
+export type Testimonial = {
+  id: string;
+  name: string;
+  initials: string;
+  role: string;
+  location: string;
+  quote: string;
+  highlight: string;
+  rating: number;
+  plan: string;
+  verified: boolean;
+};
+
+export const testimonials: Testimonial[] = [
+  {
+    id: "testimonial-1",
+    name: "Amanpreet Singh",
+    initials: "AS",
+    role: "Software Architect",
+    location: "Phase 7, Mohali",
+    quote:
+      "Saves me 45 minutes of chopping and cooking every morning in Phase 7. The cold-pressed juice is 100% raw with zero added sugar, and the fruit bowl arrives crisp and chilled right on schedule.",
+    highlight: "Saves 45 mins every morning",
+    rating: 5,
+    plan: "Weekly Glow Ritual",
+    verified: true,
+  },
+  {
+    id: "testimonial-2",
+    name: "Dr. Simran Kaur",
+    initials: "SK",
+    role: "Dental Surgeon & Fitness Enthusiast",
+    location: "Sector 70, Mohali",
+    quote:
+      "Hygiene and food safety are non-negotiable for me. The tamper-evident packaging and sheer freshness of paneer and sprouts blew me away. No oily dressings—just crisp, zesty, clean nutrition.",
+    highlight: "Tamper-evident, sealed hygiene",
+    rating: 5,
+    plan: "Daily High-Protein Salads",
+    verified: true,
+  },
+  {
+    id: "testimonial-3",
+    name: "Vikramjit Sandhu",
+    initials: "VS",
+    role: "Tech Lead, Bestech Business Towers",
+    location: "Phase 8, Mohali",
+    quote:
+      "Delivery is sharp at 7:30 AM before I leave for the office. Eco-friendly spill-proof packaging keeps everything pristine. Having healthy breakfast sorted makes workdays dramatically smoother.",
+    highlight: "Prompt 7:30 AM delivery",
+    rating: 5,
+    plan: "Monthly Complete Ritual",
+    verified: true,
+  },
+  {
+    id: "testimonial-4",
+    name: "Ruchika Sharma",
+    initials: "RS",
+    role: "Chartered Accountant",
+    location: "Phase 3B2, Mohali",
+    quote:
+      "The Garden Saute Bowl is loaded with fresh paneer and real low-carb greens. Mohali has been missing a genuine clean-eating service like this. It keeps my energy steady throughout the day.",
+    highlight: "Fresh paneer & low-carb fuel",
+    rating: 5,
+    plan: "Saute Bowl & Detox Juices",
+    verified: true,
   },
 ];
 
@@ -288,4 +417,183 @@ export function formatPrice(value: number | null) {
 export function getOfferDiscount(subtotal: number) {
   if (!storefrontConfig.offer.enabled) return 0;
   return Math.round(subtotal * storefrontConfig.offer.discountRate);
+}
+
+export type WhatsAppOrderPayload = {
+  id: string;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    comboPlan?: ComboPlanKey | undefined;
+  }>;
+  customer: {
+    name: string;
+    mobile: string;
+    address: string;
+    pin: string;
+    landmark?: string | undefined;
+    window?: string | undefined;
+    notes?: string | undefined;
+  };
+  deliveryDate: string;
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  total: number;
+};
+
+export function buildWhatsAppOrderUrl(order: WhatsAppOrderPayload, dateLabel?: string): string {
+  const itemsText = order.items
+    .map((item) => {
+      const planText = item.comboPlan ? ` (${getComboPlanLabel(item.comboPlan)})` : "";
+      return `• ${item.productName} × ${item.quantity}${planText} — ₹${item.unitPrice * item.quantity}`;
+    })
+    .join("\n");
+
+  const formattedDate =
+    dateLabel ||
+    new Date(order.deliveryDate).toLocaleDateString("en-IN", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+
+  const lines = [
+    `🥗 *NEW ORDER - MY HEALTHY PLATTER* 🥗`,
+    `*Order ID:* #${order.id}`,
+    ``,
+    `👤 *Customer Details:*`,
+    `• Name: ${order.customer.name}`,
+    `• Phone: ${order.customer.mobile}`,
+    `• Address: ${order.customer.address}, PIN ${order.customer.pin}`,
+    order.customer.landmark ? `• Landmark: ${order.customer.landmark}` : null,
+    order.customer.window ? `• Delivery Window: ${order.customer.window}` : null,
+    order.customer.notes ? `• Dietary / Notes: ${order.customer.notes}` : null,
+    ``,
+    `📅 *First Delivery Date:* ${formattedDate}`,
+    ``,
+    `📦 *Order Items:*`,
+    itemsText,
+    ``,
+    `💰 *Bill Details:*`,
+    `• Subtotal: ₹${order.subtotal}`,
+    order.discount > 0 ? `• Discount: -₹${order.discount}` : null,
+    `• Delivery Fee: ${order.deliveryFee === 0 ? "FREE" : `₹${order.deliveryFee}`}`,
+    `*Total Amount:* ₹${order.total}`,
+    ``,
+    `Please confirm my order and share payment instructions. Thank you!`,
+  ].filter((line): line is string => line !== null);
+
+  const message = lines.join("\n");
+  return `https://wa.me/${storefrontConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
+
+export const DELIVERY_TIME_SLOTS = [
+  "7:00 AM - 7:30 AM",
+  "7:30 AM - 8:00 AM",
+  "8:00 AM - 8:30 AM",
+  "8:30 AM - 9:00 AM",
+  "9:00 AM - 9:30 AM",
+  "9:30 AM - 10:00 AM",
+  "10:00 AM - 10:30 AM",
+  "10:30 AM - 11:00 AM",
+] as const;
+
+export type DeliveryTimeSlot = (typeof DELIVERY_TIME_SLOTS)[number];
+
+export function isPastDailyCutoff(now = new Date()): boolean {
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  return hours > 21 || (hours === 21 && minutes >= 30);
+}
+
+export function getEarliestDeliveryDate(now = new Date()): Date {
+  const earliest = new Date(now);
+  const addDays = isPastDailyCutoff(now) ? 2 : 1;
+  earliest.setDate(now.getDate() + addDays);
+  earliest.setHours(0, 0, 0, 0);
+  return earliest;
+}
+
+export type CustomerDetailsInput = {
+  name: string;
+  mobile: string;
+  address: string;
+  pin: string;
+  landmark?: string | undefined;
+  window?: string | undefined;
+  notes?: string | undefined;
+};
+
+export type CustomerValidationErrors = {
+  name?: string;
+  mobile?: string;
+  address?: string;
+  pin?: string;
+  landmark?: string;
+  window?: string;
+  notes?: string;
+};
+
+export type CustomerTouchedFields = {
+  name?: boolean;
+  mobile?: boolean;
+  address?: boolean;
+  pin?: boolean;
+  landmark?: boolean;
+  window?: boolean;
+  notes?: boolean;
+};
+
+export function validateCustomerDetails(customer: CustomerDetailsInput): CustomerValidationErrors {
+  const errors: CustomerValidationErrors = {};
+
+  // Name validation: required, at least 2 chars, letters and spaces only
+  const trimmedName = customer.name.trim();
+  if (!trimmedName) {
+    errors.name = "Full name is required";
+  } else if (trimmedName.length < 2) {
+    errors.name = "Name must be at least 2 characters";
+  } else if (!/^[a-zA-Z\s'.]+$/.test(trimmedName)) {
+    errors.name = "Name should contain letters only";
+  }
+
+  // Mobile validation: 10-digit Indian phone number starting with 6-9
+  const cleanMobile = customer.mobile.replace(/[\s\-\+]/g, "").replace(/^91/, "").replace(/^0/, "");
+  if (!cleanMobile) {
+    errors.mobile = "Mobile number is required";
+  } else if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+    errors.mobile = "Enter a valid 10-digit mobile number (starts with 6-9)";
+  } else if (/^(\d)\1{9}$/.test(cleanMobile)) {
+    errors.mobile = "Please enter a valid mobile number";
+  }
+
+  // Address validation: minimum 10 chars, meaningful content
+  const trimmedAddress = customer.address.trim();
+  if (!trimmedAddress) {
+    errors.address = "Complete delivery address is required";
+  } else if (trimmedAddress.length < 10) {
+    errors.address = "Please provide house/flat no., building and street (min 10 characters)";
+  } else if (!/[a-zA-Z0-9]/.test(trimmedAddress)) {
+    errors.address = "Please enter a valid street address";
+  }
+
+  // PIN validation: 6-digit Indian PIN code
+  const cleanPin = customer.pin.trim();
+  if (!cleanPin) {
+    errors.pin = "PIN code is required";
+  } else if (!/^[1-9][0-9]{5}$/.test(cleanPin)) {
+    errors.pin = "Enter a valid 6-digit postal PIN code";
+  }
+
+  // Preferred Delivery Window validation: must be one of the specified slots
+  const selectedWindow = customer.window?.trim();
+  if (!selectedWindow) {
+    errors.window = "Please select a preferred morning delivery slot (7:00 AM - 11:00 AM)";
+  } else if (!DELIVERY_TIME_SLOTS.includes(selectedWindow as DeliveryTimeSlot)) {
+    errors.window = "Please choose an available slot between 7:00 AM and 11:00 AM";
+  }
+
+  return errors;
 }

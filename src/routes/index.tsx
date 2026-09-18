@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -8,15 +8,18 @@ import {
   ChevronDown,
   CircleHelp,
   Clock3,
+  Copy,
   Instagram,
   MapPin,
   Menu,
   MessageCircle,
   Minus,
   Plus,
+  Quote,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Star,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -48,15 +51,29 @@ import {
   getOfferDiscount,
   getProductById,
   getProductPrice,
+  getProductBadges,
   categories,
   products,
+  testimonials,
   storefrontConfig,
+  buildWhatsAppOrderUrl,
+  DELIVERY_TIME_SLOTS,
+  validateCustomerDetails,
+  isPastDailyCutoff,
+  getEarliestDeliveryDate,
+  type CustomerValidationErrors,
+  type CustomerTouchedFields,
   type ComboPlanKey,
   type Product,
 } from "@/lib/storefront-data";
+import {
+  generateOrderId,
+  saveOrder,
+  type Order,
+  type OrderItem,
+} from "@/lib/admin-store";
 import { cn } from "@/lib/utils";
 import logoImg from "@/assets/mhp-logo.png";
-import whatsappGifAsset from "@/assets/whatsapp-icon.gif.asset.json";
 import { useIsMobile } from "@/hooks/use-mobile";
 import freshCutFruitBoxImg from "@/assets/products/fresh-cut-fruit-box.jpg";
 import greenEnergyJuiceImg from "@/assets/products/green-energy-juice.jpg";
@@ -71,18 +88,45 @@ import sauteVeggiesImg from "@/assets/products/saute-veggies.jpg";
 import comboFruitJuiceImg from "@/assets/products/combo-fruit-juice.jpg";
 import comboFruitSaladImg from "@/assets/products/combo-fruit-salad.jpg";
 import comboFruitSaladJuiceImg from "@/assets/products/combo-fruit-salad-juice.jpg";
+import blackChickpeaHarvestImg from "@/assets/products/black-chickpea-harvest.jpg";
+import goldenHarvestImg from "@/assets/products/golden-harvest.jpg";
+import mixedSaladBowlImg from "@/assets/products/mixed-salad-bowl.jpg";
 
 const productImages: Record<string, string> = {
+  // Fresh Cuts
+  "exotic-fruit-bowl": freshCutFruitBoxImg,
   "fresh-cut-fruit-box": freshCutFruitBoxImg,
+
+  // Detox Juices
+  "verdant-vitality": greenEnergyJuiceImg,
+  "ruby-radiance": skinGlowJuiceImg,
+  "citrus-vital": immunityBoostJuiceImg,
   "green-energy-juice": greenEnergyJuiceImg,
   "skin-glow-juice": skinGlowJuiceImg,
   "immunity-boost-juice": immunityBoostJuiceImg,
+
+  // Signature Salads
+  "chickpea-harvest": chickpeaSaladImg,
+  "rajma-garden": rajmaSaladImg,
+  "moong-sprout-crunch": moongDalSproutsImg,
+  "soya-protein-bowl": soyaChunksSaladImg,
+  "black-chickpea-harvest": blackChickpeaHarvestImg,
+  "golden-harvest": goldenHarvestImg,
+  "mixed-salad-bowl": mixedSaladBowlImg,
   "chickpea-salad": chickpeaSaladImg,
   "rajma-salad": rajmaSaladImg,
   "moong-dal-sprouts": moongDalSproutsImg,
   "soya-chunks-salad": soyaChunksSaladImg,
   "carrot-cucumber-salad": carrotCucumberSaladImg,
+
+  // Seasonal Greens
+  "garden-saute-bowl": sauteVeggiesImg,
   "saute-veggies": sauteVeggiesImg,
+
+  // Combos
+  "the-glow-ritual": comboFruitJuiceImg,
+  "the-balance-ritual": comboFruitSaladImg,
+  "the-complete-ritual": comboFruitSaladJuiceImg,
   "combo-fruit-juice": comboFruitJuiceImg,
   "combo-fruit-salad": comboFruitSaladImg,
   "combo-fruit-salad-juice": comboFruitSaladJuiceImg,
@@ -123,7 +167,7 @@ const operationalBenefits: Array<[LucideIcon, string, string]> = [
   [Clock3, "Freshly prepared", "Prepared for the morning, not pulled from a shelf."],
   [ShieldCheck, "Hygienically packed", "Packed with care so it arrives ready to enjoy."],
   [ShoppingBag, "Doorstep delivery", "A calmer start, delivered where you need it."],
-  [MessageCircle, "WhatsApp support", "Need help? Reach us at 9780035199."],
+  [MessageCircle, "WhatsApp support", `Need help? Reach us at ${storefrontConfig.phone}.`],
 ];
 
 const comboPlanOrder: ComboPlanKey[] = ["daily", "weekly", "monthly"];
@@ -151,7 +195,15 @@ function HomePage() {
     pin: "",
     landmark: "",
     window: "",
+    notes: "",
   });
+  const [customerErrors, setCustomerErrors] = useState<CustomerValidationErrors>({});
+  const [touchedFields, setTouchedFields] = useState<CustomerTouchedFields>({});
+  const [orderSuccessOpen, setOrderSuccessOpen] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [confirmedDateLabel, setConfirmedDateLabel] = useState("");
+  const [confirmedWhatsAppUrl, setConfirmedWhatsAppUrl] = useState("");
+  const [upiCopied, setUpiCopied] = useState(false);
 
   const selectedProductIds = useMemo(
     () => Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0),
@@ -219,10 +271,19 @@ function HomePage() {
 
   const updateQuantity = (productId: string, quantity: number) => {
     setCart((current) => {
-      const next = { ...current };
-      if (quantity <= 0) delete next[productId];
-      else next[productId] = { ...(next[productId] ?? { comboPlan: undefined }), quantity };
-      return next;
+      if (quantity <= 0) {
+        const next = { ...current };
+        delete next[productId];
+        return next;
+      }
+      const existing = current[productId];
+      const product = getProductById(productId);
+      const nextPlan =
+        existing?.comboPlan ?? (product?.comboPlans ? "daily" : undefined);
+      return {
+        ...current,
+        [productId]: { quantity, comboPlan: nextPlan },
+      };
     });
   };
 
@@ -235,7 +296,26 @@ function HomePage() {
   };
 
   const updateCustomer = (key: keyof typeof customer, value: string) => {
-    setCustomer((details) => ({ ...details, [key]: value }));
+    setCustomer((details) => {
+      const next = { ...details, [key]: value };
+      if (touchedFields[key]) {
+        const errors = validateCustomerDetails(next);
+        setCustomerErrors((prev) => ({
+          ...prev,
+          [key]: errors[key],
+        }));
+      }
+      return next;
+    });
+  };
+
+  const handleBlur = (key: keyof typeof customer) => {
+    setTouchedFields((prev) => ({ ...prev, [key]: true }));
+    const errors = validateCustomerDetails(customer);
+    setCustomerErrors((prev) => ({
+      ...prev,
+      [key]: errors[key],
+    }));
   };
 
   const nextStep = () => {
@@ -247,11 +327,70 @@ function HomePage() {
       toast.error("Choose your first delivery date to continue.");
       return;
     }
-    if (
-      checkoutStep === 3 &&
-      (!customer.name || !customer.mobile || !customer.address || !customer.pin)
-    ) {
-      toast.error("Please add your name, mobile, address and PIN code.");
+    if (checkoutStep === 3) {
+      const validationErrors = validateCustomerDetails(customer);
+      setCustomerErrors(validationErrors);
+      setTouchedFields({
+        name: true,
+        mobile: true,
+        address: true,
+        pin: true,
+        window: true,
+      });
+
+      const errorValues = Object.values(validationErrors).filter(Boolean);
+      if (errorValues.length > 0) {
+        toast.error(errorValues[0] || "Please check the delivery form for errors.");
+        return;
+      }
+    }
+    if (checkoutStep === 4) {
+      // Save order to localStorage for admin dashboard
+      const offerDiscount = getOfferDiscount(cartSubtotal);
+      const total = Math.max(cartSubtotal - offerDiscount + (storefrontConfig.deliveryFee ?? 0), 0);
+      const orderItems: OrderItem[] = selectedProducts.map((product) => ({
+        productId: product.id,
+        productName: product.name,
+        quantity: cart[product.id]?.quantity ?? 1,
+        unitPrice: getProductPrice(product, cart[product.id]?.comboPlan),
+        comboPlan: cart[product.id]?.comboPlan,
+      }));
+      const order: Order = {
+        id: generateOrderId(),
+        items: orderItems,
+        customer: { ...customer },
+        deliveryDate: deliveryDate ? deliveryDate.toISOString() : new Date().toISOString(),
+        subtotal: cartSubtotal,
+        discount: offerDiscount,
+        deliveryFee: storefrontConfig.deliveryFee ?? 0,
+        total,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveOrder(order);
+
+      // Build WhatsApp URL with all order details
+      const whatsappUrl = buildWhatsAppOrderUrl(order, dateLabel);
+
+      // Save confirmed order state for the confirmation dialog
+      setConfirmedOrder(order);
+      setConfirmedDateLabel(dateLabel);
+      setConfirmedWhatsAppUrl(whatsappUrl);
+
+      // Close checkout, reset cart
+      setCheckoutOpen(false);
+      setCart({});
+      setCheckoutStep(1);
+      setDeliveryDate(undefined);
+      setCustomer({ name: "", mobile: "", address: "", pin: "", landmark: "", window: "", notes: "" });
+      setCustomerErrors({});
+      setTouchedFields({});
+      setUpiCopied(false);
+
+      // Show confirmation dialog and open WhatsApp
+      setOrderSuccessOpen(true);
+      window.open(whatsappUrl, "_blank");
       return;
     }
     setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
@@ -261,9 +400,22 @@ function HomePage() {
     setCheckoutStep((step) => (step > 1 ? ((step - 1) as CheckoutStep) : step));
   };
 
+  const handleCopyUpi = useCallback(() => {
+    navigator.clipboard.writeText(storefrontConfig.upiId).then(() => {
+      setUpiCopied(true);
+      toast.success("UPI ID copied!");
+      setTimeout(() => setUpiCopied(false), 2500);
+    });
+  }, []);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-brand-cream text-brand-ink pb-20 md:pb-0">
-      <header className="absolute inset-x-0 top-0 z-30 border-b border-brand-deep/10 bg-brand-cream/90 backdrop-blur-sm">
+      {/* Cut-off time announcement banner */}
+      <div className="relative z-40 bg-gradient-to-r from-brand-deep via-brand-green to-brand-deep px-4 py-2.5 text-center text-xs font-semibold text-white sm:text-sm">
+        <span className="mr-1.5">⏰</span>
+        {storefrontConfig.cutoffBannerText}
+      </div>
+      <header className="sticky inset-x-0 top-0 z-30 border-b border-brand-deep/10 bg-brand-cream/90 backdrop-blur-sm">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-10">
           <a href="#top" className="flex items-center gap-3" aria-label="My Healthy Platter home">
             <img
@@ -283,6 +435,9 @@ function HomePage() {
             <a href="#how-it-works" className="transition-colors hover:text-brand-green">
               How It Works
             </a>
+            <a href="#reviews" className="transition-colors hover:text-brand-green">
+              Reviews
+            </a>
             <a href="#faq" className="transition-colors hover:text-brand-green">
               FAQ
             </a>
@@ -301,13 +456,15 @@ function HomePage() {
               </span>
             </Button>
             <a
-              className="inline-flex h-10 items-center gap-2 px-2 text-sm font-semibold text-brand-deep transition-colors hover:text-brand-green"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#25D366]/40 bg-[#25D366]/10 px-3.5 text-xs font-semibold text-brand-deep shadow-xs transition-all hover:border-[#25D366] hover:bg-[#25D366]/20"
               href={whatsappMessage("Hi My Healthy Platter, I need help with my order.")}
               target="_blank"
               rel="noreferrer"
               onClick={() => toast.success("Opening WhatsApp support")}
+              title="Chat with us on WhatsApp"
             >
-              <WhatsAppIcon className="size-4" /> WhatsApp
+              <WhatsAppIcon className="size-4" />
+              <span>WhatsApp</span>
             </a>
             <Button
               className="bg-brand-deep px-5 text-primary-foreground hover:bg-brand-green"
@@ -339,6 +496,9 @@ function HomePage() {
               <button className="text-left" onClick={() => scrollTo("how-it-works")}>
                 How It Works
               </button>
+              <button className="text-left" onClick={() => scrollTo("reviews")}>
+                Reviews
+              </button>
               <button className="text-left" onClick={() => scrollTo("faq")}>
                 FAQ
               </button>
@@ -346,8 +506,10 @@ function HomePage() {
                 href={whatsappMessage("Hi My Healthy Platter, I need help with my order.")}
                 target="_blank"
                 rel="noreferrer"
+                className="flex items-center gap-2 text-brand-deep hover:text-brand-green"
               >
-                WhatsApp support
+                <WhatsAppIcon className="size-4" />
+                <span>WhatsApp Support</span>
               </a>
             </div>
           </nav>
@@ -355,7 +517,7 @@ function HomePage() {
       </header>
 
       <main id="top">
-        <section className="relative mx-auto grid min-h-[680px] max-w-7xl items-center gap-10 px-5 pb-14 pt-36 lg:grid-cols-[0.9fr_1.1fr] lg:px-10 lg:pb-20 lg:pt-40">
+        <section className="relative mx-auto grid min-h-[680px] max-w-7xl items-center gap-10 px-5 pb-14 pt-28 lg:grid-cols-[0.9fr_1.1fr] lg:px-10 lg:pb-20 lg:pt-32">
           <div className="relative z-10 max-w-xl">
             <div className="mb-7 inline-flex items-center gap-2 border border-brand-green/30 bg-brand-sage/55 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-brand-deep">
               <Sparkles className="size-3.5" /> Fresh breakfast, made simple
@@ -599,6 +761,8 @@ function HomePage() {
           </div>
         </section>
 
+        <TestimonialsSection onAction={() => scrollTo("menu")} />
+
         <section
           id="faq"
           className="scroll-mt-20 border-t border-brand-deep/10 bg-white/45 px-5 py-20 lg:px-10 lg:py-28"
@@ -625,7 +789,7 @@ function HomePage() {
                 ],
                 [
                   "Need help with an order?",
-                  "WhatsApp us at 9780035199 . We'll help you with the next step.",
+                  `WhatsApp us at ${storefrontConfig.phone}. We'll help you with the next step.`,
                 ],
               ].map(([question, answer]) => (
                 <details className="group py-5" key={question}>
@@ -746,8 +910,20 @@ function HomePage() {
         dateLabel={dateLabel}
         customer={customer}
         updateCustomer={updateCustomer}
+        customerErrors={customerErrors}
+        touchedFields={touchedFields}
+        handleBlur={handleBlur}
         nextStep={nextStep}
         previousStep={previousStep}
+      />
+      <OrderConfirmationDialog
+        open={orderSuccessOpen}
+        onOpenChange={setOrderSuccessOpen}
+        order={confirmedOrder}
+        dateLabel={confirmedDateLabel}
+        whatsAppUrl={confirmedWhatsAppUrl}
+        upiCopied={upiCopied}
+        onCopyUpi={handleCopyUpi}
       />
     </div>
   );
@@ -825,12 +1001,19 @@ function FoodImage({ src, alt }: { src: string; alt: string }) {
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
-    <img
-      src={whatsappGifAsset.url}
-      alt=""
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("size-5 shrink-0", className)}
       aria-hidden="true"
-      className={cn("rounded-full object-cover", className)}
-    />
+    >
+      <circle cx="12" cy="12" r="12" fill="#25D366" />
+      <path
+        d="M17.507 14.37c-.286-.143-1.693-.836-1.956-.931-.262-.095-.453-.143-.644.143-.19.286-.74.931-.908 1.122-.167.19-.334.215-.62.072-.286-.143-1.21-.446-2.304-1.421-.852-.76-1.428-1.7-1.595-1.986-.167-.286-.018-.44.126-.583.13-.129.286-.334.429-.5.143-.167.19-.286.286-.477.095-.19.048-.358-.024-.5-.072-.143-.644-1.552-.882-2.125-.233-.558-.469-.482-.644-.491l-.549-.01c-.19 0-.5.072-.763.358-.262.286-1.002.979-1.002 2.387 0 1.408 1.026 2.769 1.169 2.96.143.19 2.02 3.085 4.894 4.327.684.296 1.218.472 1.635.605.688.219 1.314.188 1.808.114.551-.083 1.693-.692 1.932-1.36.239-.668.239-1.241.167-1.36-.072-.12-.262-.191-.548-.334z"
+        fill="#FFFFFF"
+      />
+    </svg>
   );
 }
 
@@ -870,6 +1053,127 @@ function SectionIntro({
   );
 }
 
+function TestimonialsSection({ onAction }: { onAction: () => void }) {
+  return (
+    <section
+      id="reviews"
+      className="scroll-mt-20 border-t border-brand-deep/10 bg-brand-sage/35 px-5 py-20 lg:px-10 lg:py-28"
+    >
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <SectionIntro
+            eyebrow="EARLY SUBSCRIBERS · MOHALI"
+            title="Loved by Mohali's morning risers."
+            description="Real feedback from early testers and routine subscribers across Phase 7, Sector 70, Phase 8, and Phase 3B2."
+          />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 border border-brand-deep/15 bg-brand-cream px-3.5 py-2">
+              <div className="flex text-amber-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="text-xs font-bold text-brand-deep">4.9 / 5.0</span>
+              <span className="text-[11px] text-brand-ink/60">· Early Reviews</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 border border-brand-green/30 bg-brand-green/10 px-3.5 py-2 text-xs font-semibold text-brand-deep">
+              <ShieldCheck className="size-4 text-brand-green" />
+              100% Sealed Food Hygiene
+            </div>
+          </div>
+        </div>
+
+        {/* Highlight trust stats row */}
+        <div className="mt-10 grid grid-cols-2 gap-3 border border-brand-deep/10 bg-brand-cream/80 p-4 sm:grid-cols-4 sm:p-6">
+          <div>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">45 mins</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Saved every morning (zero prep)</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">100% Raw</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Cold-pressed · No added sugar</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">7 – 11 AM</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Guaranteed on-time slots</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">Mohali</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Phase 7, 3B2, 8, Sec 70 & more</p>
+          </div>
+        </div>
+
+        {/* Reviews Cards */}
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {testimonials.map((review) => (
+            <article
+              key={review.id}
+              className="relative flex flex-col justify-between border border-brand-deep/15 bg-brand-cream p-6 shadow-xs transition-all hover:border-brand-green/40 hover:shadow-md sm:p-8"
+            >
+              <Quote className="pointer-events-none absolute right-5 top-5 size-12 -rotate-12 text-brand-deep/5" />
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    {[...Array(review.rating)].map((_, i) => (
+                      <Star key={i} className="size-4 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <span className="inline-flex items-center rounded-full border border-brand-green/25 bg-brand-sage/60 px-2.5 py-0.5 text-[11px] font-semibold text-brand-deep">
+                    {review.highlight}
+                  </span>
+                </div>
+
+                <blockquote className="mt-5 text-base font-medium leading-7 text-brand-deep">
+                  &ldquo;{review.quote}&rdquo;
+                </blockquote>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between border-t border-brand-deep/10 pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-deep font-display text-xs font-bold text-primary-foreground">
+                    {review.initials}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-brand-deep">{review.name}</h4>
+                    <p className="text-xs text-brand-ink/60">
+                      {review.role} · <span className="font-medium text-brand-green">{review.location}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-green">
+                    <Check className="size-3.5" /> Verified
+                  </span>
+                  <p className="text-[10px] text-brand-ink/50">{review.plan}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* Social Proof CTA */}
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border border-brand-deep/15 bg-brand-deep p-6 text-primary-foreground sm:flex-row sm:p-8">
+          <div>
+            <h3 className="font-display text-2xl text-white">
+              Ready to reclaim 45 minutes every morning in Mohali?
+            </h3>
+            <p className="mt-1 text-sm text-primary-foreground/75">
+              Freshly prepped fruits, high-protein salads, and cold-pressed juices delivered right on schedule.
+            </p>
+          </div>
+          <Button
+            className="shrink-0 bg-brand-sage text-brand-deep hover:bg-white"
+            onClick={onAction}
+          >
+            Start my morning routine <ArrowRight />
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ProductCard({
   product,
   onAdd,
@@ -884,6 +1188,7 @@ function ProductCard({
   const [localPlan, setLocalPlan] = useState<ComboPlanKey>(comboPlan ?? "daily");
   const isCombo = !!product.comboPlans;
   const displayPrice = getProductPrice(product, isCombo ? localPlan : undefined);
+  const badges = getProductBadges(product);
 
   return (
     <article
@@ -902,6 +1207,18 @@ function ProductCard({
             </span>
           )}
         </div>
+        {badges.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className="inline-flex items-center rounded-full border border-brand-green/25 bg-brand-sage/65 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-brand-deep"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="mt-3 min-h-[48px] text-sm leading-6 text-brand-ink/65">
           {product.description}
         </p>
@@ -1150,6 +1467,9 @@ function CheckoutDialog({
   dateLabel,
   customer,
   updateCustomer,
+  customerErrors,
+  touchedFields,
+  handleBlur,
   nextStep,
   previousStep,
 }: {
@@ -1172,8 +1492,12 @@ function CheckoutDialog({
     pin: string;
     landmark: string;
     window: string;
+    notes: string;
   };
   updateCustomer: (key: keyof typeof customer, value: string) => void;
+  customerErrors: CustomerValidationErrors;
+  touchedFields: CustomerTouchedFields;
+  handleBlur: (key: keyof typeof customer) => void;
   nextStep: () => void;
   previousStep: () => void;
 }) {
@@ -1235,7 +1559,15 @@ function CheckoutDialog({
               dateLabel={dateLabel}
             />
           )}
-          {step === 3 && <CheckoutDetails customer={customer} updateCustomer={updateCustomer} />}
+          {step === 3 && (
+            <CheckoutDetails
+              customer={customer}
+              updateCustomer={updateCustomer}
+              errors={customerErrors}
+              touched={touchedFields}
+              onBlur={handleBlur}
+            />
+          )}
           {step === 4 && (
             <CheckoutReview
               selectedProducts={selectedProducts}
@@ -1255,10 +1587,23 @@ function CheckoutDialog({
             {step === 1 ? "Keep browsing" : "Back"}
           </Button>
           <Button
-            className="bg-brand-deep text-primary-foreground hover:bg-brand-green"
+            className={cn(
+              "text-primary-foreground transition-colors",
+              step === 4
+                ? "bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold shadow-md"
+                : "bg-brand-deep hover:bg-brand-green",
+            )}
             onClick={nextStep}
           >
-            {step === 4 ? "Payment setup pending" : step === 3 ? "Review my order" : "Continue"}
+            {step === 4 ? (
+              <span className="flex items-center gap-2">
+                <WhatsAppIcon className="size-4" /> Place Order on WhatsApp
+              </span>
+            ) : step === 3 ? (
+              "Review my order"
+            ) : (
+              "Continue"
+            )}
             {step < 4 && <ArrowRight />}
           </Button>
         </div>
@@ -1327,6 +1672,18 @@ function CheckoutProducts({
               </button>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-brand-deep">{product.name}</p>
+                {getProductBadges(product).length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {getProductBadges(product).map((badge) => (
+                      <span
+                        key={badge}
+                        className="inline-flex items-center rounded bg-brand-green/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-green"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <p className="mt-1 text-xs text-brand-ink/55">
                   {formatPrice(getProductPrice(product, item?.comboPlan))}
                 </p>
@@ -1396,6 +1753,8 @@ function CheckoutDate({
   setDeliveryDate: (date: Date | undefined) => void;
   dateLabel: string;
 }) {
+  const earliestDate = getEarliestDeliveryDate();
+  const pastCutoff = isPastDailyCutoff();
   return (
     <div>
       <CheckoutHeading
@@ -1403,7 +1762,19 @@ function CheckoutDate({
         title="Choose your first delivery date"
         description="Pick the morning you want your breakfast routine to begin."
       />
-      <div className="mt-8">
+      {/* Cutoff alert */}
+      <div className="mt-5 flex items-start gap-3 rounded-lg border border-amber-400/30 bg-amber-50 p-3.5 text-sm text-amber-900">
+        <Clock3 className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div>
+          <p className="font-semibold">Fresh Morning Prep Cut-off: {storefrontConfig.cutoffTime}</p>
+          <p className="mt-0.5 text-xs text-amber-700">
+            {pastCutoff
+              ? "It's past 9:30 PM — orders placed now will be prepared for the day after tomorrow."
+              : "Place your order before 9:30 PM tonight for next-morning delivery."}
+          </p>
+        </div>
+      </div>
+      <div className="mt-6">
         <Label className="text-brand-deep">First delivery</Label>
         <Popover>
           <PopoverTrigger asChild>
@@ -1420,7 +1791,7 @@ function CheckoutDate({
               mode="single"
               selected={deliveryDate}
               onSelect={setDeliveryDate}
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+              disabled={(date) => date < earliestDate}
               initialFocus
               className="pointer-events-auto p-3"
             />
@@ -1434,6 +1805,9 @@ function CheckoutDate({
 function CheckoutDetails({
   customer,
   updateCustomer,
+  errors,
+  touched,
+  onBlur,
 }: {
   customer: {
     name: string;
@@ -1442,67 +1816,194 @@ function CheckoutDetails({
     pin: string;
     landmark: string;
     window: string;
+    notes: string;
   };
   updateCustomer: (key: keyof typeof customer, value: string) => void;
+  errors: CustomerValidationErrors;
+  touched: CustomerTouchedFields;
+  onBlur: (key: keyof typeof customer) => void;
 }) {
-  const field = (key: keyof typeof customer, label: string, placeholder: string, type = "text") => (
-    <div>
-      <Label htmlFor={key} className="text-brand-deep">
-        {label}
-      </Label>
-      <Input
-        id={key}
-        type={type}
-        value={customer[key]}
-        onChange={(event) => updateCustomer(key, event.target.value)}
-        placeholder={placeholder}
-        className="mt-2 border-brand-deep/20 bg-transparent"
-      />
-    </div>
-  );
   return (
     <div>
       <CheckoutHeading
         step="03"
         title="Delivery details"
-        description="Only the details needed to get breakfast to you."
+        description="Please provide accurate delivery details so our kitchen and delivery team can reach you on time."
       />
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {field("name", "Name", "Your name")}
-        {field("mobile", "Mobile / WhatsApp", "10-digit mobile number", "tel")}
-        {
-          <div className="sm:col-span-2">
-            <Label htmlFor="address" className="text-brand-deep">
-              Address
+        {/* Full Name */}
+        <div>
+          <Label htmlFor="name" className="font-semibold text-brand-deep">
+            Full Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="name"
+            type="text"
+            value={customer.name}
+            onChange={(event) => updateCustomer("name", event.target.value)}
+            onBlur={() => onBlur("name")}
+            placeholder="e.g. Rahul Sharma"
+            className={cn(
+              "mt-2 border-brand-deep/20 bg-transparent transition-colors",
+              touched.name && errors.name && "border-destructive focus-visible:ring-destructive/30",
+            )}
+          />
+          {touched.name && errors.name && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">{errors.name}</p>
+          )}
+        </div>
+
+        {/* Mobile */}
+        <div>
+          <Label htmlFor="mobile" className="font-semibold text-brand-deep">
+            Mobile / WhatsApp <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="mobile"
+            type="tel"
+            maxLength={10}
+            value={customer.mobile}
+            onChange={(event) => {
+              const clean = event.target.value.replace(/\D/g, "");
+              updateCustomer("mobile", clean);
+            }}
+            onBlur={() => onBlur("mobile")}
+            placeholder="10-digit mobile number"
+            className={cn(
+              "mt-2 border-brand-deep/20 bg-transparent transition-colors",
+              touched.mobile && errors.mobile && "border-destructive focus-visible:ring-destructive/30",
+            )}
+          />
+          {touched.mobile && errors.mobile && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">{errors.mobile}</p>
+          )}
+        </div>
+
+        {/* Complete Address */}
+        <div className="sm:col-span-2">
+          <Label htmlFor="address" className="font-semibold text-brand-deep">
+            Complete Delivery Address <span className="text-destructive">*</span>
+          </Label>
+          <Textarea
+            id="address"
+            rows={2}
+            value={customer.address}
+            onChange={(event) => updateCustomer("address", event.target.value)}
+            onBlur={() => onBlur("address")}
+            placeholder="House/flat no., building/society name, street/sector (Mohali)"
+            className={cn(
+              "mt-2 border-brand-deep/20 bg-transparent transition-colors",
+              touched.address && errors.address && "border-destructive focus-visible:ring-destructive/30",
+            )}
+          />
+          {touched.address && errors.address && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">{errors.address}</p>
+          )}
+        </div>
+
+        {/* Area / PIN */}
+        <div>
+          <Label htmlFor="pin" className="font-semibold text-brand-deep">
+            PIN Code <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="pin"
+            type="text"
+            maxLength={6}
+            value={customer.pin}
+            onChange={(event) => {
+              const clean = event.target.value.replace(/\D/g, "");
+              updateCustomer("pin", clean);
+            }}
+            onBlur={() => onBlur("pin")}
+            placeholder="6-digit PIN (e.g. 160071)"
+            className={cn(
+              "mt-2 border-brand-deep/20 bg-transparent transition-colors",
+              touched.pin && errors.pin && "border-destructive focus-visible:ring-destructive/30",
+            )}
+          />
+          {touched.pin && errors.pin && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">{errors.pin}</p>
+          )}
+        </div>
+
+        {/* Landmark */}
+        <div>
+          <Label htmlFor="landmark" className="font-semibold text-brand-deep">
+            Landmark <span className="text-xs font-normal text-brand-ink/50">(Optional)</span>
+          </Label>
+          <Input
+            id="landmark"
+            type="text"
+            value={customer.landmark}
+            onChange={(event) => updateCustomer("landmark", event.target.value)}
+            placeholder="e.g. Near Fortis Hospital / Market"
+            className="mt-2 border-brand-deep/20 bg-transparent"
+          />
+        </div>
+
+        {/* Preferred Delivery Window: 7am to 11am, 30 min each */}
+        <div className="mt-2 sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <Label className="font-semibold text-brand-deep">
+              Preferred Morning Delivery Slot <span className="text-destructive">*</span>
             </Label>
-            <Textarea
-              id="address"
-              value={customer.address}
-              onChange={(event) => updateCustomer("address", event.target.value)}
-              placeholder="Flat, building, street"
-              className="mt-2 border-brand-deep/20 bg-transparent"
-            />
+            {customer.window && (
+              <span className="text-xs font-bold text-brand-green">
+                ✓ {customer.window}
+              </span>
+            )}
           </div>
-        }
-        {field("pin", "Area / PIN", "PIN code")}
-        {field("landmark", "Landmark", "Nearby landmark (optional)")}
-        {
-          <div className="sm:col-span-2">
-            <Label className="text-brand-deep">Preferred delivery window</Label>
-            <Select
-              value={customer.window}
-              onValueChange={(value) => updateCustomer("window", value)}
-            >
-              <SelectTrigger className="mt-2 border-brand-deep/20 bg-transparent">
-                <SelectValue placeholder="Choose a window (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="early-morning">Early morning</SelectItem>
-                <SelectItem value="morning">Morning</SelectItem>
-              </SelectContent>
-            </Select>
+          <p className="mt-0.5 text-xs text-brand-ink/60">
+            Fresh morning delivery between 7:00 AM and 11:00 AM (30-min windows)
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {DELIVERY_TIME_SLOTS.map((slot) => {
+              const isSelected = customer.window === slot;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => {
+                    updateCustomer("window", slot);
+                    onBlur("window");
+                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2.5 text-center text-xs font-semibold transition-all",
+                    isSelected
+                      ? "border-brand-green bg-brand-green text-primary-foreground shadow-sm ring-2 ring-brand-green/20"
+                      : "border-brand-deep/15 bg-brand-cream text-brand-deep hover:border-brand-deep/35 hover:bg-brand-sage/40",
+                  )}
+                >
+                  <Clock3 className="size-3.5 shrink-0" />
+                  <span>{slot}</span>
+                </button>
+              );
+            })}
           </div>
-        }
+          {touched.window && errors.window && (
+            <p className="mt-2 text-xs font-medium text-destructive">{errors.window}</p>
+          )}
+        </div>
+
+        {/* Dietary & Delivery Notes */}
+        <div className="mt-2 sm:col-span-2">
+          <Label htmlFor="notes" className="font-semibold text-brand-deep">
+            Dietary & Delivery Notes{" "}
+            <span className="text-xs font-normal text-brand-ink/50">(Optional)</span>
+          </Label>
+          <Textarea
+            id="notes"
+            rows={2}
+            value={customer.notes}
+            onChange={(event) => updateCustomer("notes", event.target.value)}
+            placeholder="e.g. No onion/garlic, allergic to nuts, ring doorbell on arrival…"
+            className="mt-2 border-brand-deep/20 bg-transparent"
+          />
+          <p className="mt-1 text-[11px] text-brand-ink/40">
+            Mention any dietary restrictions, allergies, or special delivery instructions.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1526,6 +2027,7 @@ function CheckoutReview({
     pin: string;
     landmark: string;
     window: string;
+    notes: string;
   };
 }) {
   const offerDiscount = getOfferDiscount(cartSubtotal);
@@ -1535,7 +2037,7 @@ function CheckoutReview({
       <CheckoutHeading
         step="04"
         title="Review your order"
-        description="Here is everything before payment is connected."
+        description="Check your breakfast selection and address before placing your order via WhatsApp."
       />
       <div className="mt-6 space-y-3 border-y border-brand-deep/15 py-5 text-sm">
         <div>
@@ -1591,10 +2093,27 @@ function CheckoutReview({
           <span className="font-bold text-brand-deep">Deliver to:</span> {customer.name},{" "}
           {customer.address}, {customer.pin}
         </p>
+        {customer.landmark && (
+          <p>
+            <span className="font-bold text-brand-deep">Landmark:</span> {customer.landmark}
+          </p>
+        )}
+        {customer.window && (
+          <p>
+            <span className="font-bold text-brand-deep">Preferred time:</span> {customer.window}
+          </p>
+        )}
+        {customer.notes && (
+          <p>
+            <span className="font-bold text-brand-deep">Dietary / Notes:</span> {customer.notes}
+          </p>
+        )}
       </div>
-      <div className="mt-5 flex gap-3 border border-brand-green/25 bg-brand-sage/45 p-4 text-sm text-brand-deep">
-        <CircleHelp className="mt-0.5 size-4 shrink-0" />
-        <p>Payment is being connected next. This review does not create an order or charge you.</p>
+      <div className="mt-5 flex gap-3 border border-[#25D366]/30 bg-[#25D366]/10 p-4 text-sm text-brand-deep">
+        <WhatsAppIcon className="mt-0.5 size-5 shrink-0" />
+        <p>
+          <strong>No payment required right now.</strong> Your order will be registered in our system and you will be redirected to WhatsApp with all order details filled in to confirm delivery with our kitchen.
+        </p>
       </div>
     </div>
   );
@@ -1615,5 +2134,119 @@ function CheckoutHeading({
       <h3 className="mt-2 font-display text-3xl text-brand-deep">{title}</h3>
       <p className="mt-2 text-sm text-brand-ink/60">{description}</p>
     </div>
+  );
+}
+
+function OrderConfirmationDialog({
+  open,
+  onOpenChange,
+  order,
+  dateLabel,
+  whatsAppUrl,
+  upiCopied,
+  onCopyUpi,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  order: Order | null;
+  dateLabel: string;
+  whatsAppUrl: string;
+  upiCopied: boolean;
+  onCopyUpi: () => void;
+}) {
+  if (!order) return null;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto border-brand-deep/15 bg-brand-cream p-0 text-brand-ink">
+        {/* Success header */}
+        <div className="flex flex-col items-center border-b border-brand-deep/10 px-6 pb-6 pt-8 text-center">
+          <div className="flex size-16 items-center justify-center rounded-full bg-brand-green/15">
+            <Check className="size-8 text-brand-green" />
+          </div>
+          <DialogHeader className="mt-5">
+            <DialogTitle className="font-display text-2xl text-brand-deep sm:text-3xl">
+              Order Placed!
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-brand-ink/60">
+              Your order has been registered & sent to our kitchen.
+            </DialogDescription>
+          </DialogHeader>
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-brand-green/30 bg-brand-sage/60 px-3.5 py-1.5 text-xs font-bold tracking-wide text-brand-deep">
+            #{order.id}
+          </span>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          {/* Order Summary */}
+          <div className="space-y-2 text-sm">
+            <p className="font-semibold text-brand-deep">Order Summary</p>
+            <div className="space-y-1.5 text-brand-ink/60">
+              {order.items.map((item, idx) => (
+                <div className="flex justify-between gap-4" key={idx}>
+                  <span>{item.productName} × {item.quantity}</span>
+                  <span>{formatPrice(item.unitPrice * item.quantity)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between gap-4 border-t border-brand-deep/10 pt-2 font-bold text-brand-deep">
+              <span>Total</span>
+              <span>{formatPrice(order.total)}</span>
+            </div>
+            <div className="mt-1 text-xs text-brand-ink/50">
+              <p>📅 Delivery: {dateLabel} · 🕐 {order.customer.window}</p>
+            </div>
+          </div>
+
+          {/* WhatsApp confirmation */}
+          <a
+            href={whatsAppUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[#25D366] px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#20bd5a]"
+          >
+            <WhatsAppIcon className="size-5" />
+            Confirm on WhatsApp
+          </a>
+
+          {/* UPI Payment card */}
+          <div className="rounded-xl border border-brand-deep/12 bg-white/70 p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-ink/40">Payment via UPI</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-lg font-bold tracking-tight text-brand-deep">{storefrontConfig.upiId}</p>
+                <p className="mt-0.5 text-xs text-brand-ink/50">Amount: {formatPrice(order.total)}</p>
+              </div>
+              <button
+                onClick={onCopyUpi}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-all",
+                  upiCopied
+                    ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
+                    : "border-brand-deep/20 bg-brand-cream text-brand-deep hover:border-brand-deep/40 hover:bg-brand-sage/50",
+                )}
+              >
+                {upiCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {upiCopied ? "Copied!" : "Copy UPI ID"}
+              </button>
+            </div>
+            <div className="mt-3 rounded-md bg-brand-sage/40 p-2.5 text-[11px] leading-relaxed text-brand-ink/55">
+              <p><strong>How to pay:</strong> Open any UPI app (GPay, PhonePe, Paytm) → Send money → Paste the UPI ID → Enter amount → Pay.</p>
+              <p className="mt-1">Share the payment screenshot on WhatsApp for faster confirmation.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-brand-deep/10 px-6 py-4">
+          <Button
+            variant="outline"
+            className="w-full border-brand-deep/20 text-brand-deep hover:bg-brand-sage"
+            onClick={() => onOpenChange(false)}
+          >
+            Done
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
