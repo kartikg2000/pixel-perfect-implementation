@@ -116,8 +116,8 @@ export const createOrder = createServerFn({ method: "POST" })
     const deliveryFee = storefrontConfig.deliveryFee ?? 0;
     const total = Math.max(subtotal - discount + deliveryFee, 0);
 
-    const supabase = createPublicClient();
-    const { error } = await supabase.from("orders").insert({
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("orders").insert({
       id: data.id,
       items: items as unknown as Database["public"]["Tables"]["orders"]["Row"]["items"],
       customer_name: data.customer.name,
