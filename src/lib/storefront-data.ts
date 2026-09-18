@@ -589,9 +589,9 @@ export function validateCustomerDetails(customer: CustomerDetailsInput): Custome
   // Preferred Delivery Window validation: must be one of the specified slots
   const selectedWindow = customer.window?.trim();
   if (!selectedWindow) {
-    errors.window = "Please select a preferred morning delivery slot (7:00 AM - 11:00 AM)";
+    errors.window = "Please select a preferred delivery slot (8:00 AM - 2:00 PM)";
   } else if (!DELIVERY_TIME_SLOTS.includes(selectedWindow as DeliveryTimeSlot)) {
-    errors.window = "Please choose an available slot between 7:00 AM and 11:00 AM";
+    errors.window = "Please choose an available slot between 8:00 AM and 2:00 PM";
   }
 
   return errors;
