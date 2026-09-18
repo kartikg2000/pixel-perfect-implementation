@@ -428,9 +428,6 @@ function HomePage() {
       // Show confirmation dialog and open WhatsApp
       setOrderSuccessOpen(true);
       window.open(whatsappUrl, "_blank");
-      return;
-    }
-    setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
   };
 
   const previousStep = () => {
