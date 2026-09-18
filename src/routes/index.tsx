@@ -1148,7 +1148,7 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
           <SectionIntro
             eyebrow="EARLY SUBSCRIBERS · MOHALI"
             title="Loved by Mohali's morning risers."
-            description="Real feedback from early testers and routine subscribers across Phase 7, Sector 70, Phase 8, and Phase 3B2."
+            description="Real feedback from early testers and routine subscribers."
           />
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 border border-brand-deep/15 bg-brand-cream px-3.5 py-2">
@@ -1178,12 +1178,12 @@ function TestimonialsSection({ onAction }: { onAction: () => void }) {
             <p className="mt-1 text-xs text-brand-ink/65">Cold-pressed · No added sugar</p>
           </div>
           <div>
-            <p className="font-display text-2xl text-brand-deep sm:text-3xl">7 – 11 AM</p>
+            <p className="font-display text-2xl text-brand-deep sm:text-3xl">8 AM – 2 PM</p>
             <p className="mt-1 text-xs text-brand-ink/65">Guaranteed on-time slots</p>
           </div>
           <div>
             <p className="font-display text-2xl text-brand-deep sm:text-3xl">Mohali</p>
-            <p className="mt-1 text-xs text-brand-ink/65">Phase 7, 3B2, 8, Sec 70 & more</p>
+            <p className="mt-1 text-xs text-brand-ink/65">Mohali Phase 7, 3B2, 8, Sec 70 & more nearby areas</p>
           </div>
         </div>
 
