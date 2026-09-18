@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { createOrder } from "@/lib/orders.functions";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -203,6 +205,8 @@ function HomePage() {
   const [confirmedDateLabel, setConfirmedDateLabel] = useState("");
   const [confirmedWhatsAppUrl, setConfirmedWhatsAppUrl] = useState("");
   const [upiCopied, setUpiCopied] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const createOrderFn = useServerFn(createOrder);
 
   const selectedProductIds = useMemo(
     () => Object.keys(cart).filter((id) => (cart[id]?.quantity ?? 0) > 0),
