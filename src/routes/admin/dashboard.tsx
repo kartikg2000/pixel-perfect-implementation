@@ -69,38 +69,67 @@ const ALL_STATUSES: OrderStatus[] = [
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Auth guard
+  const fetchOrders = useServerFn(listOrders);
+  const updateStatusFn = useServerFn(setOrderStatus);
+  const deleteOrderFn = useServerFn(removeOrder);
+
+  // Auth guard — send signed-out visitors back to the sign-in page
   useEffect(() => {
-    if (!isAdminAuthenticated()) {
-      navigate({ to: "/admin" });
-    }
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (!data.session) {
+        void navigate({ to: "/admin" });
+        return;
+      }
+      setSessionChecked(true);
+    });
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
-  // Load orders
-  useEffect(() => {
-    setOrders(getOrders());
-  }, []);
+  const ordersQuery = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: () => fetchOrders(),
+    enabled: sessionChecked,
+  });
 
-  const handleLogout = () => {
-    logoutAdmin();
+  const orders: Order[] = ordersQuery.data ?? [];
+  const isForbidden =
+    ordersQuery.isError && /forbidden/i.test(String(ordersQuery.error));
+
+  const handleLogout = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
     toast.success("Logged out successfully");
-    navigate({ to: "/admin" });
+    void navigate({ to: "/admin", replace: true });
   };
 
-  const handleStatusChange = (orderId: string, status: OrderStatus) => {
-    updateOrderStatus(orderId, status);
-    setOrders(getOrders());
-    toast.success(`Order updated to ${ORDER_STATUS_CONFIG[status].label}`);
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    try {
+      await updateStatusFn({ data: { id: orderId, status } });
+      await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast.success(`Order updated to ${ORDER_STATUS_CONFIG[status].label}`);
+    } catch {
+      toast.error("Could not update the order. Please try again.");
+    }
   };
 
-  const handleDelete = (orderId: string) => {
-    deleteOrder(orderId);
-    setOrders(getOrders());
-    toast.success("Order deleted");
+  const handleDelete = async (orderId: string) => {
+    try {
+      await deleteOrderFn({ data: { id: orderId } });
+      await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast.success("Order deleted");
+    } catch {
+      toast.error("Could not delete the order. Please try again.");
+    }
   };
 
   // Filtering
