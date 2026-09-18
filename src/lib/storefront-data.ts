@@ -322,7 +322,7 @@ export const testimonials: Testimonial[] = [
     initials: "AS",
     role: "Software Architect",
     quote:
-      "Saves me 45 minutes of chopping and cooking every morning in Phase 7. The cold-pressed juice is 100% raw with zero added sugar, and the fruit bowl arrives crisp and chilled right on schedule.",
+      "Saves me 45 minutes of chopping and cooking every morning. The cold-pressed juice is 100% raw with zero added sugar, and the fruit bowl arrives crisp and chilled right on schedule.",
     highlight: "Saves 45 mins every morning",
     rating: 5,
     plan: "Weekly Glow Ritual",
@@ -358,7 +358,7 @@ export const testimonials: Testimonial[] = [
     initials: "RS",
     role: "Chartered Accountant",
     quote:
-      "The Garden Saute Bowl is loaded with fresh paneer and real low-carb greens. Mohali has been missing a genuine clean-eating service like this. It keeps my energy steady throughout the day.",
+      "The Garden Saute Bowl is loaded with fresh paneer and real low-carb greens. This city has been missing a genuine clean-eating service like this. It keeps my energy steady throughout the day.",
     highlight: "Fresh paneer & low-carb fuel",
     rating: 5,
     plan: "Saute Bowl & Detox Juices",

@@ -2030,11 +2030,11 @@ function CheckoutDetails({
           />
         </div>
 
-        {/* Preferred Delivery Window: 7am to 11am, 30 min each */}
+        {/* Preferred Delivery Window: 8am to 2pm, 30 min each */}
         <div className="mt-2 sm:col-span-2">
           <div className="flex items-center justify-between">
             <Label className="font-semibold text-brand-deep">
-              Preferred Morning Delivery Slot <span className="text-destructive">*</span>
+              Preferred Delivery Slot <span className="text-destructive">*</span>
             </Label>
             {customer.window && (
               <span className="text-xs font-bold text-brand-green">
@@ -2043,7 +2043,7 @@ function CheckoutDetails({
             )}
           </div>
           <p className="mt-0.5 text-xs text-brand-ink/60">
-            Fresh morning delivery between 7:00 AM and 11:00 AM (30-min windows)
+            Delivery between 8:00 AM and 2:00 PM (30-min windows)
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {DELIVERY_TIME_SLOTS.map((slot) => {
