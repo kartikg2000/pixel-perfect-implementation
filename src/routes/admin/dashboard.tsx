@@ -48,7 +48,24 @@ import logoImg from "@/assets/mhp-logo.png";
 export const Route = createFileRoute("/admin/dashboard")({
   staticData: { sitemap: false },
   head: () => ({
-    meta: [{ name: "robots", content: "noindex" }],
+    meta: [
+      { name: "robots", content: "noindex" },
+      { title: "Orders Dashboard — My Healthy Platter" },
+      {
+        name: "description",
+        content: "Private order management dashboard for My Healthy Platter.",
+      },
+      { property: "og:title", content: "Orders Dashboard — My Healthy Platter" },
+      {
+        property: "og:description",
+        content: "Private order management dashboard for My Healthy Platter.",
+      },
+      {
+        property: "og:url",
+        content: "https://myhealthyplatter.lovable.app/admin/dashboard",
+      },
+      { property: "og:type", content: "website" },
+    ],
   }),
   component: AdminDashboard,
 });
