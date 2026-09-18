@@ -952,6 +952,7 @@ function HomePage() {
         touchedFields={touchedFields}
         handleBlur={handleBlur}
         nextStep={nextStep}
+        isPlacingOrder={isPlacingOrder}
         previousStep={previousStep}
       />
       <OrderConfirmationDialog
@@ -1509,6 +1510,7 @@ function CheckoutDialog({
   touchedFields,
   handleBlur,
   nextStep,
+  isPlacingOrder,
   previousStep,
 }: {
   open: boolean;
@@ -1537,6 +1539,7 @@ function CheckoutDialog({
   touchedFields: CustomerTouchedFields;
   handleBlur: (key: keyof typeof customer) => void;
   nextStep: () => void;
+  isPlacingOrder: boolean;
   previousStep: () => void;
 }) {
   return (
