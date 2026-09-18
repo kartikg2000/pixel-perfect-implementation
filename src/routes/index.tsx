@@ -344,7 +344,7 @@ function HomePage() {
       }
     }
     if (checkoutStep === 4) {
-      // Save order to localStorage for admin dashboard
+      if (isPlacingOrder) return;
       const offerDiscount = getOfferDiscount(cartSubtotal);
       const total = Math.max(cartSubtotal - offerDiscount + (storefrontConfig.deliveryFee ?? 0), 0);
       const orderItems: OrderItem[] = selectedProducts.map((product) => ({
@@ -367,8 +367,46 @@ function HomePage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      saveOrder(order);
+      // Save the order in the database before confirming anything
+      setIsPlacingOrder(true);
+      void (async () => {
+        try {
+          await createOrderFn({
+            data: {
+              id: order.id,
+              items: orderItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                ...(item.comboPlan ? { comboPlan: item.comboPlan } : {}),
+              })),
+              customer: {
+                name: customer.name,
+                mobile: customer.mobile,
+                address: customer.address,
+                pin: customer.pin,
+                landmark: customer.landmark,
+                window: customer.window,
+                ...(customer.notes ? { notes: customer.notes } : {}),
+              },
+              deliveryDate: order.deliveryDate,
+            },
+          });
+        } catch {
+          setIsPlacingOrder(false);
+          toast.error(
+            "We couldn't save your order. Please try again, or send it to us on WhatsApp.",
+          );
+          return;
+        }
+        setIsPlacingOrder(false);
+        finishOrder(order);
+      })();
+      return;
+    }
+    setCheckoutStep((step) => (step < 4 ? ((step + 1) as CheckoutStep) : step));
+  };
 
+  const finishOrder = (order: Order) => {
       // Build WhatsApp URL with all order details
       const whatsappUrl = buildWhatsAppOrderUrl(order, dateLabel);
 
