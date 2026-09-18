@@ -640,8 +640,7 @@ function HomePage() {
               ))}
             </div>
             <p className="mt-6 inline-flex items-center gap-2 border border-brand-green/25 bg-brand-sage/55 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-brand-deep">
-              <Sparkles className="size-3.5 text-brand-green" /> {storefrontConfig.offer.label} ·{" "}
-              {storefrontConfig.deliveryLabel}
+              <Sparkles className="size-3.5 text-brand-green" /> {storefrontConfig.deliveryLabel}
             </p>
           </div>
           <FoodStillLife />
@@ -2152,12 +2151,6 @@ function CheckoutReview({
           <span>Menu subtotal</span>
           <span className="font-semibold">{formatPrice(cartSubtotal)}</span>
         </div>
-        {offerDiscount > 0 && (
-          <div className="flex justify-between gap-4 text-brand-green">
-            <span>{storefrontConfig.offer.label}</span>
-            <span>-{formatPrice(offerDiscount)}</span>
-          </div>
-        )}
         <div className="flex justify-between gap-4">
           <span>{storefrontConfig.deliveryLabel}</span>
           <span>
