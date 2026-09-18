@@ -79,20 +79,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "My Healthy Platter | Fresh breakfast, sorted" },
-      {
-        name: "description",
-        content: "Fresh, healthy breakfast prepared for you and delivered to your doorstep.",
-      },
       { name: "author", content: "My Healthy Platter" },
-      { property: "og:title", content: "My Healthy Platter | Fresh breakfast, sorted" },
-      {
-        property: "og:description",
-        content: "Fresh, healthy breakfast prepared for you and delivered to your doorstep.",
-      },
+      { property: "og:site_name", content: "My Healthy Platter" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
