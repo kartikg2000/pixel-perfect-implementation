@@ -74,7 +74,7 @@ function rowToOrder(row: OrderRow): Order {
       pin: row.customer_pin,
       landmark: row.customer_landmark,
       window: row.delivery_window,
-      notes: row.notes ?? undefined,
+      ...(row.notes ? { notes: row.notes } : {}),
     },
     deliveryDate: row.delivery_date,
     subtotal: Number(row.subtotal),
@@ -119,7 +119,7 @@ export const createOrder = createServerFn({ method: "POST" })
     const supabase = createPublicClient();
     const { error } = await supabase.from("orders").insert({
       id: data.id,
-      items: items as unknown as Database["public"]["Tables"]["orders"]["Insert"]["items"],
+      items: items as unknown as Database["public"]["Tables"]["orders"]["Row"]["items"],
       customer_name: data.customer.name,
       customer_mobile: data.customer.mobile,
       customer_address: data.customer.address,
