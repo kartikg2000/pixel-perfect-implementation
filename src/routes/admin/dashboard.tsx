@@ -298,7 +298,25 @@ function AdminDashboard() {
 
         {/* Orders table */}
         <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
-          {filteredOrders.length === 0 ? (
+          {ordersQuery.isLoading ? (
+            <div className="flex items-center justify-center px-6 py-20 text-sm text-white/40">
+              Loading orders…
+            </div>
+          ) : ordersQuery.isError ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+              <p className="text-sm font-medium text-white/50">
+                Could not load orders right now.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void ordersQuery.refetch()}
+                className="border-white/15 text-white/70 hover:bg-white/5 hover:text-white"
+              >
+                Try again
+              </Button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
               <Package className="mb-4 size-12 text-white/10" />
               <p className="text-sm font-medium text-white/40">
@@ -357,8 +375,8 @@ function AdminDashboard() {
 
         {/* Footer info */}
         <p className="mt-4 text-center text-xs text-white/15">
-          Showing {filteredOrders.length} of {orders.length} orders · Data
-          stored locally in this browser
+          Showing {filteredOrders.length} of {orders.length} orders · Saved
+          securely in your database
         </p>
       </main>
     </div>
